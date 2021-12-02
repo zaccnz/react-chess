@@ -1,25 +1,27 @@
 import React, { useReducer } from 'react';
-import { Chess } from './chess';
+import { ChessState, ChessInitializeState, ChessPushMove, ChessPopActionUntil } from './chess';
 
 type GameAction =
   | { type: 'move', from_x: number, from_y: number, to_x: number, to_y: number }
   | { type: 'undo' };
 
-const gameReducer = (state: Chess, action: GameAction): Chess => {
+const gameReducer = (state: ChessState, action: GameAction): ChessState => {
+  const newState = JSON.parse(JSON.stringify(state));
+
   switch (action.type) {
     case 'move': {
-      state.pushMove(action.from_x, action.from_y, action.to_x, action.to_y);
+      ChessPushMove(newState, action.from_x, action.from_y, action.to_x, action.to_y);
       break;
     }
     case 'undo': {
-      state.popActionUntilMove();
+      ChessPopActionUntil(newState, 'MovePiece');
       break;
     }
   }
 
-  return state.shallowClone();
+  return newState;
 };
 
-export const createGame = (rows: number, columns: number): [Chess, React.Dispatch<GameAction>] => {
-  return useReducer(gameReducer, new Chess(rows, columns));
+export const createGame = (rows: number, columns: number): [ChessState, React.Dispatch<GameAction>] => {
+  return useReducer(gameReducer, ChessInitializeState(rows, columns));
 };

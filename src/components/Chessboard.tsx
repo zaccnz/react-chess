@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { Team } from '../game/chess';
+import { ChessGetLost, ChessGetPieces, ChessGetPossibleMoves, ChessLogDebug, Team } from '../game/chess';
 import { createGame } from '../game/reducer';
 import { ChessPiece } from './ChessPiece';
 
@@ -103,7 +103,7 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
   };
 
   const debug = () => {
-    board.debugBoard();
+    ChessLogDebug(board);
   };
 
   return (
@@ -125,12 +125,12 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
         }
         {
           selected &&
-          board.getPossibleMoves(selected.grid_x, selected.grid_y).map((move, i) =>
+          ChessGetPossibleMoves(board, selected.grid_x, selected.grid_y).map((move, i) =>
             <Move key={`move_${i}`} grid_x={move[0]} grid_y={move[1]} will_take={move[2]} is_castle={move[3]} />
           )
         }
         {
-          board.getPieces().map(
+          ChessGetPieces(board).map(
             (v, i) =>
               <ChessPiece
                 key={`piece_${i}_${v.uid}`}
@@ -152,13 +152,13 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
         <h1>white lost</h1>
         <ul style={{ listStyle: 'none' }}>
           {
-            board.getLost(Team.WHITE).map((v, i) => <li key={`white_lost_${i}`}>{v}</li>)
+            ChessGetLost(board, Team.WHITE).map((v, i) => <li key={`white_lost_${i}`}>{v}</li>)
           }
         </ul>
         <h1>black lost</h1>
         <ul style={{ listStyle: 'none' }}>
           {
-            board.getLost(Team.BLACK).map((v, i) => <li key={`black_lost_${i}`}>{v}</li>)
+            ChessGetLost(board, Team.BLACK).map((v, i) => <li key={`black_lost_${i}`}>{v}</li>)
           }
         </ul>
         <h1>actions</h1>
