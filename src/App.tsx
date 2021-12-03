@@ -1,12 +1,22 @@
 import React from 'react';
-import './App.css';
-import { Chessboard } from './components/Chessboard';
+
+import styled from 'styled-components';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { Chess } from './components/Chess';
+
+const Container = styled.div`
+  max-width: 1000px;
+  margin: 0 auto;
+`;
 
 function App(): JSX.Element {
   return (
-    <div className='App'>
-      <Chessboard lightColor='#e3c06f' darkColor='#b88a4a'></Chessboard>
-    </div>
+    <Container className='App'>
+      <Header />
+      <Chess />
+      <Footer />
+    </Container>
   );
 }
 

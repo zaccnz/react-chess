@@ -3,6 +3,8 @@
 Built with React.  
 Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
 
+![Screenshot of the game](screenshots/first_ui.png)  
+
 ### Todo
 
 - [x] Get basic chess gameplay running
@@ -17,6 +19,7 @@ This project is built with
 - React
 - TypeScript
 - Styled Components
+- React FontAwesome
 
 ### Building
 

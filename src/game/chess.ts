@@ -33,7 +33,7 @@ const DefaultPieceLayout = [
   PieceType.Rook,
 ];
 
-type Action =
+export type Action =
   | {
     type: 'MovePiece', piece: PieceType, takes?: PieceType, takes_has_moved?: boolean,
     first_move: boolean, from_x: number, from_y: number, to_x: number, to_y: number
@@ -115,7 +115,7 @@ export const ChessTimeSinceStarted = (state: ChessState): string => {
 
   const pad: (n: number) => string = n => n.toString().padStart(2, '0');
 
-  return (hours > 0 ? `${pad(hours)}` : '') + `${pad(minutes)}:${pad(seconds)}`;
+  return (hours > 0 ? `${pad(hours)}:` : '') + `${pad(minutes)}:${pad(seconds)}`;
 };
 
 export const ChessLogDebug = (state: ChessState): void => {

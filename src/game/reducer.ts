@@ -1,9 +1,11 @@
 import React, { useReducer } from 'react';
 import { ChessState, ChessInitializeState, ChessPushMove, ChessPopActionUntil } from './chess';
 
-type GameAction =
+export type GameAction =
   | { type: 'move', from_x: number, from_y: number, to_x: number, to_y: number }
-  | { type: 'undo' };
+  | { type: 'undo' }
+  | { type: 'redo' }
+  | { type: 'pause' };
 
 const gameReducer = (state: ChessState, action: GameAction): ChessState => {
   const newState = JSON.parse(JSON.stringify(state));
@@ -16,6 +18,9 @@ const gameReducer = (state: ChessState, action: GameAction): ChessState => {
     case 'undo': {
       ChessPopActionUntil(newState, 'MovePiece');
       break;
+    }
+    default: {
+      console.log('unimplemented action: ' + action.type);
     }
   }
 
