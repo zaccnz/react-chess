@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { ChessGetLost, ChessGetPieces, ChessGetPossibleMoves, ChessLogDebug, Team } from '../game/chess';
+import { ChessGetLost, ChessGetPieces, ChessGetPossibleMoves, ChessLogDebug, ChessTimeSinceStarted, Team } from '../game/chess';
 import { createGame } from '../game/reducer';
 import { ChessPiece } from './ChessPiece';
 
@@ -79,7 +79,14 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
   const [board, dispatch] = createGame(BOARD_ROWS, BOARD_COLUMNS);
   const [selected, setSelected] = useState<GridPosition | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
+  const [time, setTime] = useState(ChessTimeSinceStarted(board));
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(ChessTimeSinceStarted(board));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const pixelsToGrid = (x: number, y: number): [number, number] => {
     const parent = boardRef.current;
@@ -91,15 +98,6 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
     const grid_x = Math.floor((x - parent.offsetLeft) / (parent.offsetWidth / BOARD_COLUMNS));
     const grid_y = Math.floor((y - parent.offsetTop) / (parent.offsetHeight / BOARD_ROWS));
     return [grid_x, grid_y];
-  };
-
-  const move = (from_x: number, from_y: number, to_x: number, to_y: number): boolean => {
-    dispatch({ type: 'move', from_x, from_y, to_x, to_y });
-    return true;
-  };
-
-  const undo = () => {
-    dispatch({ type: 'undo' });
   };
 
   const debug = () => {
@@ -138,7 +136,7 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
                 grid_x={v.x}
                 grid_y={v.y}
                 is_white={v.team == Team.WHITE}
-                on_place={(x, y) => move(v.x, v.y, x, y)}
+                on_place={(x, y) => dispatch({ type: 'move', from_x: v.x, from_y: v.y, to_x: x, to_y: y })}
                 pixels_to_grid={pixelsToGrid}
                 on_select_change={(selected) => selected ? setSelected({ grid_x: v.x, grid_y: v.y }) : setSelected(null)}
                 can_click={v.team == board.current_team}
@@ -147,8 +145,9 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
         }
       </BoardDiv>
       <div>
-        <button onClick={() => undo()}>undo</button>
+        <button onClick={() => dispatch({ type: 'undo' })}>undo</button>
         <button onClick={() => debug()}>debug</button>
+        <h1>game time - {time}</h1>
         <h1>white lost</h1>
         <ul style={{ listStyle: 'none' }}>
           {
@@ -166,6 +165,10 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor }) => {
           {
             board.actions.map((v, i) => <li key={`action_${i}`}>{JSON.stringify(v)}</li>)
           }
+        </ul>
+        <ul>
+          {board.check.map((b, i) => b && <li key={`check_${i}`}>{Team[i]} is in check</li>)}
+          {board.checkmate.map((b, i) => b && <li key={`checkmate_${i}`}>{Team[i]} is in checkmate</li>)}
         </ul>
       </div>
     </>

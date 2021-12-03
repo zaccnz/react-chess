@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { PieceType, pieceToFilename } from '../game/piece';
 
 export type PixelsToGridFunc = (x: number, y: number) => [number, number];
-export type OnPlaceFunc = (grid_x: number, grid_y: number) => boolean;
+export type OnPlaceFunc = (grid_x: number, grid_y: number) => void;
 export type OnSelectChangedFunc = (selected: boolean) => void;
 
 export interface PieceData {

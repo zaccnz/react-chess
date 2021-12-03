@@ -5,10 +5,10 @@ Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and
 
 ### Todo
 
-- [ ] Get basic chess gameplay running
+- [x] Get basic chess gameplay running
+- [ ] Add game time, reset board, undo button, etc (QoL)
 - [ ] Complete website design
 - [ ] Ensure game is responsive and can be played on phone with touch
-- [ ] Add game time, reset board, undo button, etc (QoL)
 - [ ] Add AI (human vs bot match)
 - [ ] Multiplayer (human vs human)
 
@@ -22,7 +22,7 @@ This project is built with
 
 To run this project locally...  
 ```
-git clone https://github.com/zaccnz/react-chess
+git clone https://github.com/zaccnz/react-chess.git
 cd react-chess
 npm i
 npm start debug
