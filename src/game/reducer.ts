@@ -1,5 +1,5 @@
 import React, { useReducer } from 'react';
-import { ChessState, ChessInitializeState, ChessPushMove, ChessPopActionUntil } from './chess';
+import { ChessState, ChessInitializeState, ChessMakeMove, ChessUndo, ChessRedo } from './chess';
 
 export type GameAction =
   | { type: 'move', from_x: number, from_y: number, to_x: number, to_y: number }
@@ -12,11 +12,15 @@ const gameReducer = (state: ChessState, action: GameAction): ChessState => {
 
   switch (action.type) {
     case 'move': {
-      ChessPushMove(newState, action.from_x, action.from_y, action.to_x, action.to_y);
+      ChessMakeMove(newState, action.from_x, action.from_y, action.to_x, action.to_y);
       break;
     }
     case 'undo': {
-      ChessPopActionUntil(newState, 'MovePiece');
+      ChessUndo(newState);
+      break;
+    }
+    case 'redo': {
+      ChessRedo(newState);
       break;
     }
     default: {

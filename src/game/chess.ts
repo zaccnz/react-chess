@@ -22,35 +22,46 @@ interface GamePieceWithLocation extends GamePiece {
   y: number;
 }
 
-const DefaultPieceLayout = [
-  PieceType.Rook,
-  PieceType.Knight,
-  PieceType.Bishop,
-  PieceType.Queen,
-  PieceType.King,
-  PieceType.Bishop,
-  PieceType.Knight,
-  PieceType.Rook,
-];
+export interface ChessMove {
+  from_x: number;
+  from_y: number;
+  to_x: number;
+  to_y: number;
 
-export type Action =
-  | {
-    type: 'MovePiece', piece: PieceType, takes?: PieceType, takes_has_moved?: boolean,
-    first_move: boolean, from_x: number, from_y: number, to_x: number, to_y: number
+  piece: PieceType;
+  first_move: boolean;
+  team: Team;
+
+  time_elapsed: number;
+
+  takes?: {
+    piece: PieceType;
+    first_move: boolean;
   }
-  | { type: 'ChangeTeam', from_team: Team, to_team: Team }
-  | { type: 'Castle', rook_x: number, rook_y: number, king_x: number, king_y: number };
+
+  castle?: {
+    rook_from_x: number;
+    rook_from_y: number;
+    rook_to_x: number;
+    rook_to_y: number;
+  }
+}
 
 export interface ChessState {
   board: (GamePiece | null)[];
+
   rows: number;
   columns: number;
-  lost_pieces: PieceType[][];
-  actions: Action[];
+
+  moves: ChessMove[];
+  move_index: number;
+
   current_team: Team;
+  lost_pieces: PieceType[][];
   check: boolean[];
   checkmate: boolean[];
-  time_started: number
+
+  time_started: number;
 }
 
 const XYtoIndex = (state: ChessState, x: number, y: number): number => {
@@ -65,15 +76,30 @@ const GetNextTeam = (state: ChessState): Team => {
   return state.current_team == Team.WHITE ? Team.BLACK : Team.WHITE;
 };
 
+const DefaultPieceLayout = [
+  PieceType.Rook,
+  PieceType.Knight,
+  PieceType.Bishop,
+  PieceType.Queen,
+  PieceType.King,
+  PieceType.Bishop,
+  PieceType.Knight,
+  PieceType.Rook,
+];
+
 export const ChessInitializeState = (rows: number, columns: number): ChessState => {
   const state: ChessState = {
     board: [...Array(rows * columns)].map(() => null),
     rows, columns,
-    lost_pieces: [[], []],
-    actions: [],
+
+    moves: [],
+    move_index: -1,
+
     current_team: Team.WHITE,
+    lost_pieces: [[], []],
     check: [...Array(Team.MAX)].map(_ => false),
     checkmate: [...Array(Team.MAX)].map(_ => false),
+
     time_started: new Date().getTime()
   };
 
@@ -132,120 +158,156 @@ export const ChessLogDebug = (state: ChessState): void => {
   }
 };
 
-export const ChessPopAction = (state: ChessState): void => {
-  if (state.actions.length <= 0) {
-    console.log('attempted to pop an action when one hasnt been taken yet');
+export const ChessDoMove = (state: ChessState, move: ChessMove): void => {
+  const piece = state.board[XYtoIndex(state, move.from_x, move.from_y)];
+  if (piece === null) {
+    console.log(`invalid move - no piece at ${(move.from_x, move.from_y)}`);
+    return;
+  } else if (piece.type !== move.piece) {
+    console.log(`invalid move - piece at ${(move.from_x, move.from_y)} is a ${piece.type} not a ${move.piece}`);
+    return;
+  } else if (piece.team !== move.team) {
+    console.log(`invalid move - piece at ${(move.from_x, move.from_y)} is a ${piece.team} not a ${move.team}`);
     return;
   }
 
-  const action = state.actions.pop();
-
-  if (action === undefined) {
-    console.log('last action invalid');
+  const takes = state.board[XYtoIndex(state, move.to_x, move.to_y)];
+  if (takes === null && move.takes !== undefined) {
+    console.log('');
     return;
   }
 
-  switch (action.type) {
-    case 'MovePiece': {
-      const piece = state.board[XYtoIndex(state, action.to_x, action.to_y)];
-      state.board[XYtoIndex(state, action.from_x, action.from_y)] = piece;
-      state.board[XYtoIndex(state, action.to_x, action.to_y)] = null;
-
-      if (piece === null) {
-        console.log('attempted to undo non-existant move!');
-        break;
-      }
-
-      if (action.takes && action.takes_has_moved) {
-        console.log(`popping move, replacing at (${action.to_x}, ${action.to_y})`);
-
-        const other_team = piece.team == Team.WHITE ? Team.BLACK : Team.WHITE;
-        state.board[XYtoIndex(state, action.to_x, action.to_y)] = {
-          type: action.takes,
-          has_moved: action.takes_has_moved,
-          team: other_team,
-          uid: uuidv4(),
-        };
-        const i = state.lost_pieces[other_team].indexOf(action.takes);
-        state.lost_pieces[other_team].splice(i, 1);
-      }
-
-      if (action.first_move) {
-        piece.has_moved = false;
-      }
-      break;
-    }
-    case 'ChangeTeam': {
-      if (action.to_team != state.current_team) {
-        console.log(`undo move mismatch - expected current team ${state.current_team} to be team ${action.to_team}`);
-      }
-      state.current_team = action.from_team;
-      break;
-    }
-    case 'Castle': {
-      const rook_x = action.rook_x === 2 ? 0 : 7;
-      const y = action.rook_y;
-      const rook = state.board[XYtoIndex(state, action.rook_x, y)];
-      const king = state.board[XYtoIndex(state, action.king_x, y)];
-      if (rook === null || king === null) {
-        console.log('failed to un-castle, rook or king was null!');
-        break;
-      }
-      rook.has_moved = false;
-      king.has_moved = false;
-      state.board[XYtoIndex(state, action.king_x, y)] = null;
-      state.board[XYtoIndex(state, 4, y)] = king;
-      state.board[XYtoIndex(state, action.rook_x, y)] = null;
-      state.board[XYtoIndex(state, rook_x, y)] = rook;
-      break;
-    }
+  if (move.takes && takes) {
+    state.lost_pieces[takes.team].push(takes.type);
   }
-  ChessCheckWin(state);
-};
 
-export const ChessPopActionUntil = (state: ChessState, type: string): void => {
-  if (state.actions.length <= 0)
-    return;
-
-  let next_action = state.actions[state.actions.length - 1];
-  let do_stop = false;
-  do {
-    if (next_action.type === type)
-      do_stop = true;
-
-    ChessPopAction(state);
-
-    if (state.actions.length <= 0)
+  if (move.castle) {
+    const rook = state.board[XYtoIndex(state, move.castle.rook_from_x, move.castle.rook_from_y)];
+    if (!rook || rook.type !== PieceType.Rook) {
+      console.log('');
       return;
-    next_action = state.actions[state.actions.length - 1];
+    }
+    state.board[XYtoIndex(state, move.castle.rook_to_x, move.castle.rook_to_y)] = rook;
+    state.board[XYtoIndex(state, move.castle.rook_from_x, move.castle.rook_from_y)] = null;
 
-  } while (next_action && !do_stop);
+    rook.has_moved = true;
+  }
+
+  state.board[XYtoIndex(state, move.to_x, move.to_y)] = piece;
+  state.board[XYtoIndex(state, move.from_x, move.from_y)] = null;
+
+  piece.has_moved = true;
+
+  state.current_team = move.team === Team.WHITE ? Team.BLACK : Team.WHITE;
+  return;
 };
 
-export const ChessPushAction = (state: ChessState, action: Action): void => {
-  state.actions = [...state.actions, action];
+export const ChessUndoMove = (state: ChessState, move: ChessMove): void => {
+  const piece = state.board[XYtoIndex(state, move.to_x, move.to_y)];
+  if (piece === null) {
+    console.log(`invalid move - no piece at ${move.to_x, move.to_y}`);
+    return;
+  } else if (piece.type !== move.piece) {
+    console.log(`invalid move - piece at ${(move.to_x, move.to_y)} is a ${piece.type} not a ${move.piece}`);
+    return;
+  } else if (piece.team !== move.team) {
+    console.log(`invalid move - piece at ${(move.to_x, move.to_y)} is a ${piece.team} not a ${move.team}`);
+    return;
+  }
+
+  piece.has_moved = !move.first_move;
+
+  state.board[XYtoIndex(state, move.to_x, move.to_y)] = null;
+  state.board[XYtoIndex(state, move.from_x, move.from_y)] = piece;
+
+  if (move.takes) {
+    const team = piece.team == Team.WHITE ? Team.BLACK : Team.WHITE;
+    state.board[XYtoIndex(state, move.to_x, move.to_y)] = {
+      type: move.takes.piece,
+      has_moved: !move.takes.first_move,
+      team,
+      uid: uuidv4(),
+    };
+    state.lost_pieces[team].splice(state.lost_pieces[team].indexOf(move.takes.piece), 1);
+    return;
+  }
+
+  if (move.castle) {
+    const rook = state.board[XYtoIndex(state, move.castle.rook_to_x, move.castle.rook_to_y)];
+    if (!rook || rook.type !== PieceType.Rook) {
+      console.log('');
+      return;
+    }
+    state.board[XYtoIndex(state, move.castle.rook_to_x, move.castle.rook_to_y)] = null;
+    state.board[XYtoIndex(state, move.castle.rook_from_x, move.castle.rook_from_y)] = rook;
+
+    rook.has_moved = false;
+  }
+
+  state.current_team = move.team;
+  return;
 };
 
-export const ChessPushNextTeam = (state: ChessState): void => {
-  const new_team = GetNextTeam(state);
-
-  const change_team: Action = {
-    type: 'ChangeTeam',
-    from_team: state.current_team,
-    to_team: new_team,
-  };
-  ChessPushAction(state, change_team);
-
-  state.current_team = new_team;
+export const ChessRedo = (state: ChessState): void => {
+  if (state.move_index < 0 || state.move_index >= state.moves.length) {
+    console.log('');
+    return;
+  }
+  const move = state.moves[++state.move_index];
+  ChessDoMove(state, move);
+  return;
 };
 
-export const ChessPushMove = (state: ChessState, from_x: number, from_y: number, to_x: number, to_y: number): void => {
+export const ChessUndo = (state: ChessState): void => {
+  if (state.move_index < 0 || state.move_index >= state.moves.length) {
+    console.log('');
+    return;
+  }
+  const move = state.moves[state.move_index--];
+  ChessUndoMove(state, move);
+  return;
+};
+
+/*
+ * ChessMakeMove - creates a move and adds it to the game.  note that it does not actually move the pieces on the board
+ */
+export const ChessMakeMove = (state: ChessState, from_x: number, from_y: number, to_x: number, to_y: number): void => {
   const move = ChessGetPossibleMoves(state, from_x, from_y)
     .find(v => v[0] == to_x && v[1] == to_y);
 
   if (move == undefined) {
     console.log(`attempted to make an impossible move from (${from_x}, ${from_y}) to (${to_x}, ${to_y})`);
     return;
+  }
+
+  const piece = state.board[XYtoIndex(state, from_x, from_y)];
+  if (piece === null) {
+    console.log(`attempted to move a piece that doesnt exist at (${from_x}, ${from_y})`);
+    return;
+  }
+
+  const chessMove: ChessMove = {
+    from_x: from_x,
+    from_y: from_y,
+    to_x: to_x,
+    to_y: to_y,
+    piece: piece.type,
+    first_move: !piece.has_moved,
+    team: piece.team,
+    time_elapsed: 0
+  };
+
+  const lost = state.board[XYtoIndex(state, to_x, to_y)];
+  if (lost !== null) {
+    if (lost.team == piece.team) {
+      console.log(`attempted to take own piece (${from_x}, ${from_y}) to (${to_x}, ${to_y}) - team ${lost.team}`);
+      return;
+    }
+
+    chessMove.takes = {
+      piece: lost.type,
+      first_move: !lost.has_moved
+    };
   }
 
   if (move[3]) {
@@ -259,59 +321,22 @@ export const ChessPushMove = (state: ChessState, from_x: number, from_y: number,
     rook.has_moved = false;
     king.has_moved = false;
 
-    state.board[XYtoIndex(state, to_x, to_y)] = rook;
-    state.board[XYtoIndex(state, rook_x, to_y)] = null;
-    state.board[XYtoIndex(state, to_x + (to_x == 2 ? - 1 : 1), to_y)] = king;
-    state.board[XYtoIndex(state, from_x, to_y)] = null;
-
-    const action: Action = {
-      type: 'Castle',
-      rook_x: to_y,
-      rook_y: rook_x,
-      king_x: from_x,
-      king_y: from_y,
+    chessMove.castle = {
+      rook_from_x: rook_x,
+      rook_from_y: from_y,
+      rook_to_x: to_x,
+      rook_to_y: from_y,
     };
-    ChessPushAction(state, action);
-    ChessPushNextTeam(state);
-    ChessCheckWin(state);
-    return;
+
+    chessMove.to_x = to_x + (to_x == 2 ? - 1 : 1);
   }
 
-  const piece = state.board[XYtoIndex(state, from_x, from_y)];
-  if (piece === null) {
-    console.log(`attempted to move a piece that doesnt exist at (${from_x}, ${from_y})`);
-    return;
+  if (state.move_index + 1 !== state.moves.length) {
+    state.moves = [...state.moves.slice(0, state.move_index + 1)];
   }
-
-  const lost = state.board[XYtoIndex(state, to_x, to_y)];
-  if (lost !== null) {
-    if (lost.team == piece.team) {
-      console.log(`attempted to take own piece (${from_x}, ${from_y}) to (${to_x}, ${to_y}) - team ${lost.team}`);
-      return;
-    }
-    state.lost_pieces[lost.team].push(lost.type);
-  }
-
-  state.board[XYtoIndex(state, from_x, from_y)] = null;
-  state.board[XYtoIndex(state, to_x, to_y)] = piece;
-
-  const first_move = !piece.has_moved;
-  piece.has_moved = true;
-
-  const action: Action = {
-    type: 'MovePiece',
-    piece: piece.type,
-    first_move,
-    from_x, from_y, to_x, to_y
-  };
-  if (lost !== null) {
-    action.takes = lost.type;
-    action.takes_has_moved = lost.has_moved;
-  }
-
-  ChessPushAction(state, action);
-  ChessPushNextTeam(state);
-  ChessCheckWin(state);
+  state.moves.push(chessMove);
+  state.move_index += 1;
+  ChessDoMove(state, chessMove);
 };
 
 export const ChessIsCheck = (state: ChessState): boolean[] => {
@@ -335,7 +360,6 @@ export const ChessIsCheck = (state: ChessState): boolean[] => {
     for (const [move_x, move_y,] of moves.filter(p => p[2])) {
       const [compare_x, compare_y] = piece.team == Team.WHITE ? [bk_x, bk_y] : [wk_x, wk_y];
       if (compare_x == move_x && compare_y == move_y) {
-        console.log(`${piece.type} at (${x},${y}) to (${compare_x},${compare_y})`);
         check[piece.team == Team.WHITE ? Team.BLACK : Team.WHITE] = true;
       }
     }
@@ -511,7 +535,6 @@ export const ChessGetPossibleMoves = (state: ChessState, from_x: number, from_y:
   if (not_check) {
     for (let i = moves.length - 1; i >= 0; i--) {
       if (ChessMoveIsCheck(state, from_x, from_y, moves[i][0], moves[i][1])[state.current_team]) {
-        console.log('move is check');
         moves.splice(i, 1);
       }
     }
@@ -525,8 +548,4 @@ export const ChessGetPieces = (state: ChessState): GamePieceWithLocation[] => {
     const [x, y] = IndexToXY(state, i);
     return v == null ? null : { ...v, x, y };
   }).filter(v => v !== null) as GamePieceWithLocation[];
-};
-
-export const ChessGetLost = (state: ChessState, team: Team): PieceType[] => {
-  return state.lost_pieces[team];
 };

@@ -1,7 +1,4 @@
-# Chess
-
-Built with React.  
-Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
+# react-chess
 
 ![Screenshot of the game](screenshots/first_ui.png)  
 
@@ -20,6 +17,9 @@ This project is built with
 - TypeScript
 - Styled Components
 - React FontAwesome
+
+Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
+
 
 ### Building
 
