@@ -11,6 +11,7 @@ const HeaderContainer = styled.div`
 
 const HeaderText = styled.h1`
   font-weight: normal;
+  color: ${props => props.theme.colors.text};
 `;
 
 const HeaderSpacer = styled.div`
@@ -21,14 +22,30 @@ const HeaderButton = styled.h1`
   display: flex;
   flex-direction: column;
   justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  color: ${props => props.theme.colors.text};
 `;
 
-export const Header: React.FC = () => {
+const HeaderLink = styled.a`
+  text-decoration: none;
+  color: ${props => props.theme.colors.text};
+`;
+
+interface Props {
+  onClickSettings: () => void;
+}
+
+export const Header: React.FC<Props> = ({ onClickSettings }) => {
   return (
     <HeaderContainer>
-      <HeaderText>♘ react-chess</HeaderText>
+      <HeaderText>
+        <HeaderLink href="/">♘</HeaderLink> react-chess
+      </HeaderText>
       <HeaderSpacer />
-      <HeaderButton><FontAwesomeIcon icon={faCog} style={{ margin: 'auto' }} /></HeaderButton>
+      <HeaderButton onClick={onClickSettings}>
+        <FontAwesomeIcon icon={faCog} style={{ margin: 'auto' }} />
+      </HeaderButton>
     </HeaderContainer>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
-import { ChessMove, ChessState, Team } from '../game/chess';
-import { pieceToString } from '../game/piece';
+import { ChessMove, ChessState, Team } from '../../game/chess';
+import { pieceToString } from '../../game/piece';
 
 interface Props {
   board: ChessState;
@@ -17,6 +17,8 @@ const MoveContainer = styled.div`
 `;
 
 const MoveItem = styled.p`
+  padding: 5px 10px;
+  margin: 0px;
 `;
 
 const letters = 'abcdefgh';
@@ -30,7 +32,7 @@ export const Moves: React.FC<Props> = ({ board }) => {
   const moveString = (move: ChessMove): string => {
     let str = move.castle !== undefined ? 'Castled ' : 'Moved ';
     str += pieceToString(move.piece, move.team === Team.WHITE);
-    str += `from ${XYtoPos(move.from_x, move.from_y)} to ${XYtoPos(move.to_x, move.to_y)}`;
+    str += ` from ${XYtoPos(move.from_x, move.from_y)} to ${XYtoPos(move.to_x, move.to_y)}`;
 
     if (move.takes) {
       str += ` (took ${pieceToString(move.takes.piece, move.team === Team.BLACK)})`;

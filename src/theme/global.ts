@@ -1,3 +1,6 @@
+import { createGlobalStyle } from 'styled-components';
+
+export const GlobalStyles = createGlobalStyle`
 body, html {
   margin: 0;
   font-family: 'Consolas',
@@ -5,11 +8,11 @@ body, html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
+  background: ${props => props.theme.colors.background};
 }
 
 #root {
   height: 100%;
-  padding: 0 10px;
 }
 
 ::-webkit-scrollbar{
@@ -28,3 +31,4 @@ body, html {
   border-radius: 9px;
   box-shadow: inset 0px 0px 0px 0px #F0F0F000;
 }
+`;

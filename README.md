@@ -4,12 +4,25 @@
 
 ### Todo
 
-- [x] Get basic chess gameplay running
-- [ ] Add game time, reset board, undo button, etc (QoL)
-- [ ] Complete website design
-- [ ] Ensure game is responsive and can be played on phone with touch
-- [ ] Add AI (human vs bot match)
+- [x] Gameplay
+  - [x] Get basic chess gameplay running
+  - [x] Add game time, reset board, undo button, etc (QoL)
+  - [x] Ensure game is responsive and can be played on phone with touch
+- [ ] Website design
+  - [x] Complete layout
+  - [ ] Complete light and dark themes
+  - [ ] Cleanup UI
+  - [ ] Smooth piece movement (including undo & redo actions)
+- [ ] Chess AI (human vs bot match)
+  - [x] Minmax
+  - [x] Alpha-beta pruning
+  - [ ] Move ordering
+  - [ ] Improve evaluations
+  - [ ] Optimizations + make asynchronous
 - [ ] Multiplayer (human vs human)
+  - [ ] Allow players to create and join lobbies
+  - [ ] Synchronize gameplay between clients
+- [ ] Host project online
 
 ### Libraries used
 This project is built with  
@@ -17,6 +30,8 @@ This project is built with
 - TypeScript
 - Styled Components
 - React FontAwesome
+- React Router
+- fscreen
 
 Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
 

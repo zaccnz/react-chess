@@ -11,25 +11,27 @@ const FooterText = styled.p`
   font-weight: normal;
   justify-self: center;
   text-align: left;
+  color: ${props => props.theme.colors.text};
 `;
 
 const FooterSpacer = styled.div`
-flex-grow: 1;
-overflow: hidden;
+  flex-grow: 1;
+  overflow: hidden;
 `;
 
 const FooterLink = styled.a`
+  color: ${props => props.theme.colors.text};
 `;
 
 export const Footer: React.FC = () => {
   return (
     <FooterContainer>
       <FooterText>
-        created with React + Typescript
+        2021 zac
       </FooterText>
       <FooterSpacer />
       <FooterText>
-        <FooterLink href='https://github.com/zaccnz/react-chess/'>source code</FooterLink> - <FooterLink href='https://github.com/zaccnz/'>zac</FooterLink> (2021)
+        <FooterLink href='https://github.com/zaccnz/react-chess/'>source code</FooterLink>
       </FooterText>
     </FooterContainer>
   );

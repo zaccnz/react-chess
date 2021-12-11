@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import styled from 'styled-components';
-import { ChessGetPieces, ChessGetPossibleMoves, ChessState, ChessTimeSinceStarted, Team } from '../game/chess';
-import { GameAction } from '../game/reducer';
-import { BOARD_COLUMNS, BOARD_ROWS } from './Chess';
+import styled, { DefaultTheme } from 'styled-components';
+import { ChessGetPieces, ChessGetPossibleMoves, ChessState, ChessTimeSinceStarted, Team } from '../../game/chess';
+import { GameAction } from '../../game/reducer';
+import { BOARD_COLUMNS, BOARD_ROWS } from '../Chess';
 import { ChessPiece } from './ChessPiece';
 
 interface MoveProps {
@@ -37,7 +37,6 @@ const Move: React.FC<MoveProps> = (props) => {
 };
 
 const BoardDiv = styled.div`
-  background: #3d3d3d;
   width: 100%;
   height: 100%;
 
@@ -49,20 +48,37 @@ const BoardDiv = styled.div`
 `;
 
 interface BoardGridProps {
-  gridColor: string,
+  gridColor: boolean,
   grid_x: number,
   grid_y: number,
+  theme: DefaultTheme,
 }
 
 const BoardGridDiv = styled.div`
-  background-color: ${(props: BoardGridProps) => props.gridColor};
+  position: relative;
+  background-color: ${(props: BoardGridProps) => props.gridColor ? props.theme.chess.board_light : props.theme.chess.board_dark};
   grid-column: ${(props: BoardGridProps) => props.grid_x + 1} / span 1;
   grid-row: ${(props: BoardGridProps) => props.grid_y + 1} / span 1;
 `;
 
+const BoardGridRowLabel = styled.span`
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  color: ${props => props.theme.chess.board_text};
+  font-weight: bold;
+  font-size: 18px;
+`;
+const BoardGridColLabel = styled.span`
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: ${props => props.theme.chess.board_text};
+  font-weight: bold;
+  font-size: 18px;
+`;
+
 interface Props {
-  lightColor: string,
-  darkColor: string,
   board: ChessState,
   gameDispatch: React.Dispatch<GameAction>,
 }
@@ -72,16 +88,30 @@ interface GridPosition {
   grid_y: number,
 }
 
-export const Chessboard: React.FC<Props> = ({ lightColor, darkColor, board, gameDispatch }) => {
+export const Chessboard: React.FC<Props> = ({ board, gameDispatch }) => {
   const [selected, setSelected] = useState<GridPosition | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [_, setTime] = useState(ChessTimeSinceStarted(board));
+
+  const onTouchMove = (e: TouchEvent) => {
+    if (!e.target || !boardRef.current) return;
+    const div = e.target as HTMLDivElement;
+    if (div === boardRef.current || boardRef.current.contains(div)) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('cancelled touch scroll');
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(ChessTimeSinceStarted(board));
     }, 1000);
-    return () => clearInterval(interval);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('touchmove', onTouchMove);
+    };
   }, []);
 
   const pixelsToGrid = (x: number, y: number): [number, number] => {
@@ -107,8 +137,11 @@ export const Chessboard: React.FC<Props> = ({ lightColor, darkColor, board, game
               key={i}
               grid_x={x}
               grid_y={y}
-              gridColor={((i - y) % 2 == 0) ? lightColor : darkColor}
-            />);
+              gridColor={(i - y) % 2 == 0}
+            >
+              {x == 0 && <BoardGridRowLabel>{8 - y}</BoardGridRowLabel>}
+              {y == 0 && <BoardGridColLabel>{'abcdefgh'[x]}</BoardGridColLabel>}
+            </BoardGridDiv>);
           }
         )
       }

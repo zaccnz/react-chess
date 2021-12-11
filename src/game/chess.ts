@@ -10,7 +10,7 @@ export enum Team {
 
 type PotentialMove = [to_x: number, to_y: number, takes: boolean, castle: boolean];
 
-interface GamePiece {
+export interface GamePiece {
   type: PieceType;
   has_moved: boolean;
   team: Team;
@@ -70,10 +70,6 @@ const XYtoIndex = (state: ChessState, x: number, y: number): number => {
 
 const IndexToXY = (state: ChessState, index: number): [x: number, y: number] => {
   return [index % state.columns, Math.floor(index / state.columns)];
-};
-
-const GetNextTeam = (state: ChessState): Team => {
-  return state.current_team == Team.WHITE ? Team.BLACK : Team.WHITE;
 };
 
 const DefaultPieceLayout = [
@@ -229,7 +225,6 @@ export const ChessUndoMove = (state: ChessState, move: ChessMove): void => {
       uid: uuidv4(),
     };
     state.lost_pieces[team].splice(state.lost_pieces[team].indexOf(move.takes.piece), 1);
-    return;
   }
 
   if (move.castle) {
@@ -249,7 +244,7 @@ export const ChessUndoMove = (state: ChessState, move: ChessMove): void => {
 };
 
 export const ChessRedo = (state: ChessState): void => {
-  if (state.move_index < 0 || state.move_index >= state.moves.length) {
+  if (state.move_index < -1 || state.move_index >= state.moves.length - 1) {
     console.log('');
     return;
   }
@@ -269,7 +264,8 @@ export const ChessUndo = (state: ChessState): void => {
 };
 
 /*
- * ChessMakeMove - creates a move and adds it to the game.  note that it does not actually move the pieces on the board
+ * ChessMakeMove - creates a move and adds it to the game.  note that it does not
+ * actually move the pieces on the board
  */
 export const ChessMakeMove = (state: ChessState, from_x: number, from_y: number, to_x: number, to_y: number): void => {
   const move = ChessGetPossibleMoves(state, from_x, from_y)
@@ -348,7 +344,7 @@ export const ChessIsCheck = (state: ChessState): boolean[] => {
 
   if (!white_king || !black_king) {
     console.log('a player is missing a king.  invalid game state!');
-    return [...Array(Team.MAX)].map(_ => true);
+    return [white_king === undefined, black_king === undefined];
   }
 
   const [, wk_x, wk_y] = white_king;
@@ -374,9 +370,6 @@ export const ChessIsCheckmate = (state: ChessState): boolean[] => {
   const checkmate = [...Array(Team.MAX)].map(_ => true);
   for (const [king, x, y] of kings) {
     const moves = ChessGetPossibleMoves(state, x, y, false);
-    if (moves.length === 0) {
-      checkmate[king.team] = false;
-    }
     for (const [to_x, to_y,] of moves) {
       checkmate[king.team] = checkmate[king.team] && ChessMoveIsCheck(state, x, y, to_x, to_y)[king.team];
     }
@@ -446,8 +439,8 @@ export const ChessGetPossibleMoves = (state: ChessState, from_x: number, from_y:
 
   switch (piece.type) {
     case 'pawn': {
-      if (!piece.has_moved)
-        pushMove(from_x, piece.team == Team.WHITE ? 4 : 3);
+      if (!piece.has_moved && state.board[XYtoIndex(state, from_x, from_y + (white ? -1 : 1))] === null)
+        pushMoveNoEnemy(from_x, white ? 4 : 3);
       pushMoveNoEnemy(from_x, from_y + (white ? -1 : 1));
       pushMoveIfEnemy(from_x - 1, from_y + (white ? -1 : 1));
       pushMoveIfEnemy(from_x + 1, from_y + (white ? -1 : 1));
@@ -534,7 +527,7 @@ export const ChessGetPossibleMoves = (state: ChessState, from_x: number, from_y:
 
   if (not_check) {
     for (let i = moves.length - 1; i >= 0; i--) {
-      if (ChessMoveIsCheck(state, from_x, from_y, moves[i][0], moves[i][1])[state.current_team]) {
+      if (ChessMoveIsCheck(state, from_x, from_y, moves[i][0], moves[i][1])[piece.team]) {
         moves.splice(i, 1);
       }
     }

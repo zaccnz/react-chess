@@ -1,19 +1,21 @@
+import { faStar } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { ChessState } from '../game/chess';
-import { pieceToString, PieceType } from '../game/piece';
+import { ChessState } from '../../game/chess';
+import { pieceToString, PieceType } from '../../game/piece';
 
 const PlayersContainer = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  background: #ddd;
+  background: ${props => props.theme.menus.players.background};
 `;
 
 const PlayerContainer = styled.div`
   display: grid;
-  border-bottom: 1px solid #eee;
-  grid-template-columns: 50px auto 30px;
+  border-bottom: 1px solid ${props => props.theme.colors.grid};
+  grid-template-columns: 50px auto 50px;
   grid-template-rows: 20px 20px 20px;
   grid-template-areas:
     "icon name turn"
@@ -33,6 +35,7 @@ const PlayersName = styled.p`
   margin: 0px;
   grid-area: name;
   align-self: end;
+  color: ${props => props.theme.colors.text};
 `;
 
 const PlayerStatus = styled.span`
@@ -43,6 +46,7 @@ const PlayerStatus = styled.span`
   background: #ff0000;
   border-radius: 7px;
   padding: 2px 4px;
+  color: ${props => props.theme.colors.text};
 `;
 
 const PlayerDetails = styled.p`
@@ -50,6 +54,7 @@ const PlayerDetails = styled.p`
   margin: 0px;
   align-self: center;
   grid-area: details;
+  color: ${props => props.theme.colors.text};
 `;
 
 const PlayerPieces = styled.p`
@@ -58,6 +63,14 @@ const PlayerPieces = styled.p`
   margin: 0px;
   margin-top: -3px;
   margin-left: 2px;
+  color: ${props => props.theme.colors.text};
+`;
+
+const PlayerTurn = styled.p`
+  grid-area: turn;
+  display: flex;
+  align-item: center;
+  justify-content: center;
 `;
 
 interface Props {
@@ -123,6 +136,9 @@ export const Players: React.FC<Props> = ({ board }) => {
             <PlayerPieces>
               {v.lost_pieces.map(p => pieceToString(p, i == 1))}
             </PlayerPieces>
+            <PlayerTurn>
+              {v.turn && <FontAwesomeIcon style={{ alignSelf: 'center' }} icon={faStar} />}
+            </PlayerTurn>
           </PlayerContainer>
         )
       }
