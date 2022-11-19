@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Chess } from './components/Chess';
@@ -32,7 +32,7 @@ function App(): JSX.Element {
     <SettingsProvider>
       <ChessProvider>
         <ThemeProvider>
-          <BrowserRouter>
+          <HashRouter>
             <GlobalStyles />
 
             <Container className='App'>
@@ -48,7 +48,7 @@ function App(): JSX.Element {
                 settingsOpen && <Settings onClickSettings={onClickSettings} />
               }
             </Container>
-          </BrowserRouter>
+          </HashRouter>
         </ThemeProvider>
       </ChessProvider>
     </SettingsProvider>

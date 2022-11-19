@@ -23,7 +23,7 @@ const pieceToString = (piece: PieceType, is_white: boolean): string => {
 };
 
 const pieceToFilename = (piece: PieceType, is_white: boolean): string => {
-  const path = `/pieces/${PIECES_HAVE_SHADOW ? '' : 'no_'}shadow/${PIECES_RESOLUTION}/`;
+  const path = `${import.meta.env.BASE_URL}pieces/${PIECES_HAVE_SHADOW ? '' : 'no_'}shadow/${PIECES_RESOLUTION}/`;
   const fname =
     `${is_white ? 'w' : 'b'}_\
 ${piece}_png_\

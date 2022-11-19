@@ -2,6 +2,8 @@
 
 ![Screenshot of the game](screenshots/first_ui.png)  
 
+Play online at [zaccnz.github.io/react-chess/](https://zaccnz.github.io/react-chess/)  
+
 ### Todo
 
 - [x] Gameplay
@@ -22,7 +24,7 @@
 - [ ] Multiplayer (human vs human)
   - [ ] Allow players to create and join lobbies
   - [ ] Synchronize gameplay between clients
-- [ ] Host project online
+- [x] Host project online
 
 ### Libraries used
 This project is built with  
@@ -30,8 +32,8 @@ This project is built with
 - Vite
 - TypeScript
 - Styled Components
-- React FontAwesome
-- React Router
+- FontAwesome
+- React Router Dom
 - fscreen
 
 Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
