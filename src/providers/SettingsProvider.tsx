@@ -1,6 +1,7 @@
 import React, { createContext, useEffect, useState } from 'react';
 
 export interface Settings {
+  hasLoaded: boolean;
   isDarkTheme: boolean;
   darkTheme: boolean;
   useSystemTheme: boolean;
@@ -11,6 +12,7 @@ export interface Settings {
 }
 
 const InitialSettings: Settings = {
+  hasLoaded: false,
   isDarkTheme: false,
   darkTheme: false,
   useSystemTheme: true,
@@ -24,6 +26,8 @@ const colourSchemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
 const findExistingSettings = (): Settings => {
   const settings = { ...InitialSettings };
+
+  settings.hasLoaded = true;
 
   const darkTheme = localStorage.getItem('react-chess.darkTheme');
   darkTheme && (settings.darkTheme = darkTheme === 'true');
@@ -44,6 +48,8 @@ const findExistingSettings = (): Settings => {
 };
 
 const saveSettings = (settings: Settings) => {
+  if (!settings.hasLoaded) return;
+
   for (const [key, value] of Object.entries(settings)) {
     localStorage.setItem(`react-chess.${key}`, value);
   }
@@ -61,7 +67,7 @@ interface SettingsProviderProps {
 
 export const SettingsProvider: React.FC<SettingsProviderProps> = (props) => {
   const [settings, setSettings] = useState<Settings>(InitialSettings);
-  const [systemDarkMode, setSystemDarkMode] = useState(false);
+  const [systemDarkMode, setSystemDarkMode] = useState(colourSchemeMediaQuery.matches);
 
   const updateBrowserTheme = (event: MediaQueryListEvent) => {
     setSystemDarkMode(event.matches);

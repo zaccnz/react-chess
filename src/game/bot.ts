@@ -1,7 +1,20 @@
-import { BOARD_COLUMNS, ChessGetPossibleMoves, ChessState, GamePiece, Team } from './chess';
+import { BOARD_COLUMNS, ChessGetPossibleMoves, ChessMove, ChessState, GamePiece, Team } from './chess';
 import { PieceType } from './piece';
 
 type AiMove = { from_x: number, from_y: number, to_x: number, to_y: number };
+
+export type BotMessage = {
+  type: 'generateMove',
+  state: ChessState,
+  team: Team,
+};
+
+export type BotResult = {
+  type: 'success',
+  move: AiMove,
+} | {
+  type: 'failed',
+};
 
 const scorePiece = (piece: PieceType, ours: boolean): number => {
   const multiplier = ours ? 1 : -1;
@@ -88,7 +101,7 @@ const aiMinimax = (state: ChessState, team: Team, depth: number, alpha: number, 
   }
 };
 
-export const aiDoMinimax = (state: ChessState, team: Team): AiMove | undefined => {
+const aiDoMinimax = (state: ChessState, team: Team): AiMove | undefined => {
   const moves = aiGenMoves(state, team);
   let bestMove = undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
@@ -104,17 +117,23 @@ export const aiDoMinimax = (state: ChessState, team: Team): AiMove | undefined =
   return bestMove;
 };
 
-export const aiMakeMove = (state: ChessState, team: Team): Promise<AiMove> => {
-  return new Promise((resolve, reject) => {
-    const t0 = performance.now();
-    const move = aiDoMinimax(state, team);
-    const t1 = performance.now();
-    console.log(`AI move generation took ${t1 - t0} ms`);
+onmessage = (e: MessageEvent) => {
+  const input = e.data as BotMessage;
 
-    if (move === undefined) {
-      reject('failed to generate move!');
-      return;
+  switch (input.type) {
+    case 'generateMove': {
+      const t0 = performance.now();
+      const move = aiDoMinimax(input.state, input.team);
+      const t1 = performance.now();
+      console.log(`AI move generation took ${t1 - t0} ms`);
+
+      if (move === undefined) {
+        postMessage({ type: 'failed' } as BotResult);
+      } else {
+        postMessage({ type: 'success', move } as BotResult);
+      }
     }
-    resolve(move);
-  });
-};
+  }
+}
+
+export default {};

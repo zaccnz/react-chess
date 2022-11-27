@@ -8,19 +8,21 @@ Play online at [zaccnz.github.io/react-chess/](https://zaccnz.github.io/react-ch
 
 - [x] Gameplay
   - [x] Get basic chess gameplay running
-  - [x] Add game time, reset board, undo button, etc (QoL)
+  - [ ] Game timer
+  - [x] Reset board, undo button, etc (QoL)
   - [x] Ensure game is responsive and can be played on phone with touch
 - [ ] Website design
   - [x] Complete layout
   - [ ] Complete light and dark themes
   - [ ] Cleanup UI
-  - [ ] Smooth piece movement (including undo & redo actions)
+  - [x] Smooth piece movement (including undo & redo actions)
 - [ ] Chess AI (human vs bot match)
   - [x] Minmax
   - [x] Alpha-beta pruning
   - [ ] Move ordering
   - [ ] Improve evaluations
-  - [ ] Optimizations + make asynchronous
+  - [x] Move into worker
+  - [ ] Optimizations
 - [ ] Multiplayer (human vs human)
   - [ ] Allow players to create and join lobbies
   - [ ] Synchronize gameplay between clients

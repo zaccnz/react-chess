@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useEffect } from 'react';
-import { aiMakeMove } from '../game/bot';
-import { PlayerType, ChessState, Team, ChessGetPossibleMoves, ChessCanUndo } from '../game/chess';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
+import { PlayerType, ChessState, Team, ChessGetPossibleMoves, ChessCanUndo } from '@/game/chess';
 import { createGame } from '../game/reducer';
 import { SettingsContext } from './SettingsProvider';
+
+import BotWorker from '@/game/bot?worker';
+import { BotMessage, BotResult } from '@/game/bot';
 
 export interface ChessConfig {
   player_white: PlayerType;
@@ -46,14 +48,31 @@ interface ChessProviderProps {
 export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
   const { allowPause, defaultUsername, gameLength } = useContext(SettingsContext);
   const [board, dispatch] = createGame(defaultUsername, gameLength);
+  const workerRef = useRef(new BotWorker());
+
+  workerRef.current.onmessage = (e) => {
+    const result = e.data as BotResult;
+    switch (result.type) {
+      case 'success': {
+        dispatch({ type: 'move', ...result.move });
+        break;
+      }
+      case 'failed': {
+        alert('bot failed to generate a move');
+        break;
+      }
+    }
+  }
 
   useEffect(() => {
     if (board.players[board.current_team].type === 'bot' && board.move_index === board.moves.length - 1) {
       console.log('dispatch ai move');
 
-      aiMakeMove(board, board.current_team)
-        .then(move => dispatch({ type: 'move', ...move }))
-        .catch(e => { throw new Error(e); });
+      workerRef.current.postMessage({
+        type: 'generateMove',
+        state: board,
+        team: board.current_team,
+      } as BotMessage);
     }
   }, [board.current_team]);
 
