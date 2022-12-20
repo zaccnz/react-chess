@@ -37,8 +37,11 @@ This project is built with
 - FontAwesome
 - React Router Dom
 - fscreen
+- UUID
+- Jest
 
 Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
+Bot logic inspired by [freeCodeCamp Step-by-step Chess AI](https://www.freecodecamp.org/news/simple-chess-ai-step-by-step-1d55a9266977/).  
 
 
 ### Building
@@ -50,8 +53,13 @@ cd react-chess
 npm install
 npm run dev
 ```
+
+To test the chess game logic  
+```
+npm run test
+```
   
-You can also build this project...
+You can also build this project...  
 ```
 npm run build
 ```

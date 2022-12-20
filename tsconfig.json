@@ -24,9 +24,15 @@
         "./src/*"
       ],
     },
+    "types": [
+      "jest"
+    ]
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "**/test/*"
   ],
   "references": [
     {
