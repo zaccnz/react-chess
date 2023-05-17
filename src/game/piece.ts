@@ -15,7 +15,7 @@ const pieceToString = (piece: PieceSymbol, is_white: boolean): string => {
   return '_';
 };
 
-const pieceToName = (piece: PieceSymbol): string => {
+export const pieceToName = (piece: PieceSymbol): string => {
   switch (piece) {
     case 'p': return 'pawn';
     case 'r': return 'rook';

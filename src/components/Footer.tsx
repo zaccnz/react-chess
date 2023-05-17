@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
   return (
     <FooterContainer>
       <FooterText>
-        2022 zac
+        2023 zac
       </FooterText>
       <FooterSpacer />
       <FooterText>

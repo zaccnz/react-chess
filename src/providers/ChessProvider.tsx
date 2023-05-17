@@ -23,6 +23,7 @@ export const SquareToXY = (square: Square): [number, number] => {
 
 type StartNewGame_Func = (config: ChessConfig) => void;
 type MakeMove_Func = (from: Square, to: Square) => boolean;
+type Promote_Func = (from: Square, to: Square, promotion: PieceSymbol) => boolean;
 type PotentialMoves_Func = (from_x: number, from_y: number) => { to: Square, flags: string }[];
 type UndoMove_Func = () => boolean;
 type RedoMove_Func = () => boolean;
@@ -44,6 +45,7 @@ interface ChessInterface {
   names: Names,
   StartNewGame: StartNewGame_Func;
   MakeMove: MakeMove_Func;
+  Promote: Promote_Func;
   PotentialMoves: PotentialMoves_Func;
   UndoMove: UndoMove_Func;
   RedoMove: RedoMove_Func;
@@ -278,6 +280,22 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       updateBoard();
       return true;
     },
+    Promote: (from, to, promotion) => {
+      redoStackRef.current = [];
+      try {
+        const move = stateRef.current.move({ from, to, promotion });
+        doUpdateUids(move);
+
+        if (move.captured) {
+          doCapture(move.color, move.captured);
+        }
+      } catch (e) {
+        return false;
+      }
+
+      updateBoard();
+      return true;
+    },
     PotentialMoves: (from_x: number, from_y: number): { to: Square, flags: string }[] => {
       return stateRef.current.moves({ square: XYtoSquare(from_x, from_y), verbose: true });
     },
@@ -306,7 +324,7 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
         return false;
       }
 
-      stateRef.current.move({ to: move.to, from: move.from });
+      stateRef.current.move({ to: move.to, from: move.from, promotion: move.promotion });
       doUpdateUids(move);
 
       if (move.captured) {

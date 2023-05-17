@@ -67,7 +67,6 @@ export const Chess: React.FC = () => {
     if (id === 'bot') {
       StartNewGame({ player_white: 'local', player_black: 'bot', positions: 'default' });
     } else if (!id || id.length === 0) {
-      console.log('hello world');
       StartNewGame({ player_white: 'local', player_black: 'local', positions: 'default' });
     } else {
       setIsConnecting(true);

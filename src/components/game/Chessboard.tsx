@@ -4,6 +4,7 @@ import { SquareToXY, XYtoSquare, useChessContext } from '../../providers/ChessPr
 import { Error } from '../../util/Error';
 import { ChessPiece } from './ChessPiece';
 import { Color, PieceSymbol, Square } from 'chess.js';
+import { pieceToFilename, pieceToName, pieceToString } from '@/game/piece';
 
 interface MoveProps {
   grid_x: number,
@@ -82,17 +83,63 @@ const BoardGridColLabel = styled.span`
   z-index: 10;
 `;
 
+const PromotionWindow = styled.div`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 50px;
+  right: 50px;
+  background: ${props => props.theme.menus.controls.background};
+  z-index: 20;
+`;
+
+const PromotionTitle = styled.h1`
+  text-align: center;
+  color: #fff;
+  padding-top: 1em;
+`;
+
+const PromotionChoices = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: space-evenly;
+  padding: 2em 0em 4em 0em;
+`;
+const PromotionChoice = styled.img`
+  width: 15%;
+  background: #fff;
+  border: 1px solid #ffffffff;
+  border-radius: 10px;
+  box-shadow: 1px 1px 5px ${props => props.theme.menus.controls.background};
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+  cursor: pointer;
+  aspect-ratio: 1 / 1;
+  padding: 5px;
+
+  &:hover {
+    border: 1px solid #777;
+    box-shadow: 1px 1px 5px #aeaeae;
+  }
+
+  &:active {
+    background: #eee;
+  }
+`;
+
+const PROMOTIONS: PieceSymbol[] = ['q', 'r', 'n', 'b'];
+
 interface GridPosition {
   grid_x: number,
   grid_y: number,
 }
 
 export const Chessboard: React.FC = () => {
-  const { board, turn, PotentialMoves, MakeMove } = useChessContext();
+  const { board, turn, PotentialMoves, MakeMove, Promote } = useChessContext();
   const [selected, setSelected] = useState<GridPosition | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   //const [_, setTime] = useState(ChessTimeSinceStarted(board));
   const [moveError, setMoveError] = useState('');
+  const [promotion, setPromotion] = useState<{ from: Square, to: Square } | undefined>(undefined);
 
   const onTouchMove = (e: TouchEvent) => {
     if (!e.target || !boardRef.current) return;
@@ -139,12 +186,26 @@ export const Chessboard: React.FC = () => {
   };
 
   const AttemptMove = (from_x: number, from_y: number, to_x: number, to_y: number): void => {
-    // CHECK PROMOTION!!!
-    if (!MakeMove(XYtoSquare(from_x, from_y), XYtoSquare(to_x, to_y))) {
-      setMoveError(`unable to move piece from (${from_x},${from_y}) to (${to_x}, ${to_y})`);
+    const from = XYtoSquare(from_x, from_y);
+    const to = XYtoSquare(to_x, to_y);
+
+    if (to[1] === (turn === 'w' ? '8' : '1') && board[from_y][from_x]?.type === 'p') {
+      setPromotion({ from, to });
+      return;
+    }
+    if (!MakeMove(from, to)) {
+      setMoveError(`unable to move piece from ${from} to ${to}`);
       return;
     }
   };
+
+  const AttemptPromote = (from: Square, to: Square, promotion: PieceSymbol) => {
+    if (!Promote(from, to, promotion)) {
+      setMoveError(`unable to move piece from ${from} to ${to} (picked ${pieceToName(promotion)})`);
+      return;
+    }
+    setPromotion(undefined);
+  }
 
   return (
     <BoardDiv ref={boardRef}>
@@ -198,6 +259,24 @@ export const Chessboard: React.FC = () => {
         )
       }
       <Error error={moveError} duration={1000} onErrorClose={() => setMoveError('')} />
+      {
+        promotion && <PromotionWindow>
+          <PromotionTitle>promotion</PromotionTitle>
+          <PromotionChoices>
+            {
+              PROMOTIONS.map(piece =>
+                <PromotionChoice
+                  key={`promotion-${piece}`}
+                  src={pieceToFilename(piece, turn === 'w')}
+                  title={pieceToName(piece)}
+                  alt={pieceToName(piece)}
+                  onClick={() => AttemptPromote(promotion.from, promotion.to, piece)}
+                />
+              )
+            }
+          </PromotionChoices>
+        </PromotionWindow>
+      }
     </BoardDiv>
   );
 };
