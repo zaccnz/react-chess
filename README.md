@@ -32,13 +32,13 @@ Play online at [zaccnz.github.io/react-chess/](https://zaccnz.github.io/react-ch
 This project is built with  
 - React
 - Vite
+- [chess.js](https://github.com/jhlywa/chess.js)
 - TypeScript
 - Styled Components
 - FontAwesome
 - React Router Dom
 - fscreen
 - UUID
-- Jest
 
 Chess pieces from [OpenGameArt](https://opengameart.org/content/chess-pieces-and-board-squares).  
 Bot logic inspired by [freeCodeCamp Step-by-step Chess AI](https://www.freecodecamp.org/news/simple-chess-ai-step-by-step-1d55a9266977/).  
@@ -52,11 +52,6 @@ git clone https://github.com/zaccnz/react-chess.git
 cd react-chess
 npm install
 npm run dev
-```
-
-To test the chess game logic  
-```
-npm run test
 ```
   
 You can also build this project...  

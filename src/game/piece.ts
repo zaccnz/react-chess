@@ -1,36 +1,41 @@
+import { PieceSymbol } from "chess.js";
+
 const PIECES_HAVE_SHADOW = true;
 const PIECES_RESOLUTION = '512px';
 
-enum PieceType {
-  Pawn = 'pawn',
-  Rook = 'rook',
-  Knight = 'knight',
-  Bishop = 'bishop',
-  King = 'king',
-  Queen = 'queen',
-}
-
-const pieceToString = (piece: PieceType, is_white: boolean): string => {
+const pieceToString = (piece: PieceSymbol, is_white: boolean): string => {
   switch (piece) {
-    case 'pawn': return is_white ? '♙' : '♟︎';
-    case 'rook': return is_white ? '♖' : '♜';
-    case 'knight': return is_white ? '♘' : '♞';
-    case 'bishop': return is_white ? '♗' : '♝';
-    case 'king': return is_white ? '♔' : '♚';
-    case 'queen': return is_white ? '♕' : '♛';
+    case 'p': return is_white ? '♙' : '♟︎';
+    case 'r': return is_white ? '♖' : '♜';
+    case 'n': return is_white ? '♘' : '♞';
+    case 'b': return is_white ? '♗' : '♝';
+    case 'k': return is_white ? '♔' : '♚';
+    case 'q': return is_white ? '♕' : '♛';
   }
   return '_';
 };
 
-const pieceToFilename = (piece: PieceType, is_white: boolean): string => {
+const pieceToName = (piece: PieceSymbol): string => {
+  switch (piece) {
+    case 'p': return 'pawn';
+    case 'r': return 'rook';
+    case 'n': return 'knight';
+    case 'b': return 'bishop';
+    case 'k': return 'king';
+    case 'q': return 'queen';
+  }
+  return '_';
+}
+
+const pieceToFilename = (piece: PieceSymbol, is_white: boolean): string => {
   const path = `${import.meta.env.BASE_URL}pieces/${PIECES_HAVE_SHADOW ? '' : 'no_'}shadow/${PIECES_RESOLUTION}/`;
   const fname =
     `${is_white ? 'w' : 'b'}_\
-${piece}_png_\
+${pieceToName(piece)}_png_\
 ${PIECES_HAVE_SHADOW ? 'shadow_' : ''}\
 ${PIECES_RESOLUTION}.png`;
 
   return path + fname;
 };
 
-export { PieceType, pieceToFilename, pieceToString };
+export { pieceToFilename, pieceToString };

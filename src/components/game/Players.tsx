@@ -2,7 +2,8 @@ import { faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { pieceToString, PieceType } from '../../game/piece';
+import { pieceToString } from '../../game/piece';
+import { Color, PieceSymbol } from 'chess.js';
 import { useChessContext } from '../../providers/ChessProvider';
 
 const PlayersContainer = styled.div`
@@ -63,7 +64,7 @@ const PlayerPieces = styled.p`
   margin: 0px;
   margin-top: -3px;
   margin-left: 2px;
-  color: ${props => props.theme.colors.text};
+  color: #000;
 `;
 
 const PlayerTurn = styled.p`
@@ -79,7 +80,7 @@ interface PlayerDataUI {
   status: string;
   details: string;
   turn: boolean;
-  lost_pieces: PieceType[];
+  lost_pieces: PieceSymbol[];
 }
 
 const EmptyPlayerDataUI: PlayerDataUI = {
@@ -92,7 +93,7 @@ const EmptyPlayerDataUI: PlayerDataUI = {
 };
 
 export const Players: React.FC = () => {
-  const { board } = useChessContext();
+  const { captured, turn, gameOver, names } = useChessContext();
 
   const [players, setPlayers] = useState<PlayerDataUI[]>([
     { ...EmptyPlayerDataUI, lost_pieces: [...EmptyPlayerDataUI.lost_pieces] },
@@ -102,32 +103,27 @@ export const Players: React.FC = () => {
   const fillPlayerData = () => {
     setPlayers(players => {
       players.map((p, i) => {
-        const player = board.players[i];
-        const isWhite = i === 0;
+        const colour: Color = i === 0 ? 'w' : 'b';
+        p.icon = pieceToString('k', colour === 'w');
 
-        p.icon = pieceToString(PieceType.King, isWhite);
-        p.name = isWhite ? 'WHITE' : 'BLACK';
-        p.status = player.check ?
-          (player.checkmate ? 'CHECKMATE' : 'CHECK') : '';
-
-        switch (player.type) {
-          case 'bot':
-            p.details = 'ai player';
-            break;
-          case 'local':
-            p.details = 'local player';
-            break;
-          case 'online-local':
-            p.details = 'local player';
-            p.name = player.name;
-            break;
-          case 'online-network':
-            p.details = 'network player';
-            p.name = player.name;
-            break;
+        if (colour === turn && gameOver) {
+          if (gameOver.checkmate) {
+            p.status = 'CHECKMATE';
+          } else if (gameOver.check) {
+            p.status = 'CHECK';
+          } else if (gameOver.insufficientMaterial) {
+            p.status = 'insufficient material';
+          } else if (gameOver.threefoldRepitition) {
+            p.status = 'threefold repitition';
+          }
         }
-        p.turn = board.current_team == i;
-        p.lost_pieces = [...board.players[1 - i].lost_pieces];
+
+        if (gameOver && gameOver.draw) {
+          p.status = 'draw';
+        }
+        p.name = names[colour];
+        p.turn = turn === colour;
+        p.lost_pieces = [...captured[colour]];
       });
 
       return [...players];
@@ -136,7 +132,7 @@ export const Players: React.FC = () => {
 
   useEffect(() => {
     fillPlayerData();
-  }, [board]);
+  }, [captured, turn, gameOver, names]);
 
   return (
     <PlayersContainer style={{ gridArea: 'players' }}>

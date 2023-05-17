@@ -1,84 +1,46 @@
-import { BOARD_COLUMNS, ChessGetPossibleMoves, ChessMove, ChessState, GamePiece, Team } from './chess';
-import { PieceType } from './piece';
-
-type AiMove = { from_x: number, from_y: number, to_x: number, to_y: number };
+import { Chess, Color, PieceSymbol, Square } from 'chess.js';
 
 export type BotMessage = {
   type: 'generateMove',
-  state: ChessState,
-  team: Team,
+  fen: string,
 };
 
 export type BotResult = {
   type: 'success',
-  move: AiMove,
+  move: string,
 } | {
   type: 'failed',
 };
 
-const scorePiece = (piece: PieceType, ours: boolean): number => {
+const scorePiece = (piece: PieceSymbol, ours: boolean): number => {
   const multiplier = ours ? 1 : -1;
   let cost = 0;
   switch (piece) {
-    case 'pawn': cost = 10; break;
-    case 'knight': cost = 30; break;
-    case 'bishop': cost = 30; break;
-    case 'rook': cost = 50; break;
-    case 'queen': cost = 90; break;
-    case 'king': cost = 900; break;
+    case 'p': cost = 10; break;
+    case 'k': cost = 30; break;
+    case 'b': cost = 30; break;
+    case 'r': cost = 50; break;
+    case 'q': cost = 90; break;
+    case 'k': cost = 900; break;
   }
   return cost * multiplier;
 };
 
-const aiScoreTeam = (state: ChessState, team: Team): number => {
-  return (state.board.filter(p => p !== null) as { type: PieceType, team: Team }[])
-    .map(p => scorePiece(p.type, p.team === team))
+const aiScoreTeam = (state: Chess, color: Color): number => {
+  return (state.board().flat().filter(p => p !== null) as { square: Square, type: PieceSymbol, color: Color }[])
+    .map(p => scorePiece(p.type, p.color === color))
     .reduce((a, v) => a + v, 0);
 };
 
-const aiTempMove = (state: ChessState, move: AiMove): GamePiece | null => {
-  const xy2i = (x: number, y: number) => y * BOARD_COLUMNS + x;
-  const temp = state.board[xy2i(move.to_x, move.to_y)];
-  state.board[xy2i(move.to_x, move.to_y)] = state.board[xy2i(move.from_x, move.from_y)];
-  state.board[xy2i(move.from_x, move.from_y)] = null;
-  return temp;
-};
-
-const aiTempUndoMove = (state: ChessState, move: AiMove, temp: GamePiece | null): void => {
-  const xy2i = (x: number, y: number) => y * BOARD_COLUMNS + x;
-  state.board[xy2i(move.from_x, move.from_y)] = state.board[xy2i(move.to_x, move.to_y)];
-  state.board[xy2i(move.to_x, move.to_y)] = temp;
-};
-
-const aiGenMoves = (state: ChessState, team: Team): AiMove[] => {
-  const pieces = state.board.map((p, i) =>
-    p === null ? null : [i % BOARD_COLUMNS, Math.floor(i / BOARD_COLUMNS), p.team]
-  ).filter(p => p !== null && p[2] == team) as [number, number, Team][];
-
-  const genMove = (x: number, y: number): AiMove[] => {
-    return ChessGetPossibleMoves(state, x, y).map(([to_x, to_y]) => {
-      return {
-        from_x: x,
-        from_y: y,
-        to_x, to_y,
-      } as AiMove;
-    });
-  };
-
-  return pieces
-    .map(([x, y,]) => genMove(x, y))
-    .flat();
-};
-
-const aiMinimax = (state: ChessState, team: Team, depth: number, alpha: number, beta: number, our_move = false): number => {
-  if (depth === 0) return aiScoreTeam(state, team);
+const aiMinimax = (state: Chess, color: Color, depth: number, alpha: number, beta: number, our_move = false): number => {
+  if (depth === 0) return aiScoreTeam(state, color);
 
   if (our_move) {
     let max = Number.NEGATIVE_INFINITY;
-    for (const move of aiGenMoves(state, team)) {
-      const temp = aiTempMove(state, move);
-      const score = aiMinimax(state, team, depth - 1, alpha, beta, false);
-      aiTempUndoMove(state, move, temp);
+    for (const move of state.moves()) {
+      state.move(move);
+      const score = aiMinimax(state, color, depth - 1, alpha, beta, false);
+      state.undo();
       if (score > max) max = score;
       if (score > alpha) alpha = score;
 
@@ -87,11 +49,10 @@ const aiMinimax = (state: ChessState, team: Team, depth: number, alpha: number, 
     return max;
   } else {
     let min = Number.POSITIVE_INFINITY;
-    const enemy = team == Team.BLACK ? Team.WHITE : Team.BLACK;
-    for (const move of aiGenMoves(state, enemy)) {
-      const temp = aiTempMove(state, move);
-      const score = aiMinimax(state, team, depth - 1, alpha, beta, true);
-      aiTempUndoMove(state, move, temp);
+    for (const move of state.moves()) {
+      state.move(move);
+      const score = aiMinimax(state, color, depth - 1, alpha, beta, true);
+      state.undo();
       if (score < min) min = score;
       if (score < beta) beta = score;
 
@@ -101,14 +62,14 @@ const aiMinimax = (state: ChessState, team: Team, depth: number, alpha: number, 
   }
 };
 
-const aiDoMinimax = (state: ChessState, team: Team): AiMove | undefined => {
-  const moves = aiGenMoves(state, team);
+const aiDoMinimax = (state: Chess, color: Color): string | undefined => {
+  const moves = state.moves();
   let bestMove = undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
   for (const move of moves) {
-    const temp = aiTempMove(state, move);
-    const score = aiMinimax(state, team, 3, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-    aiTempUndoMove(state, move, temp);
+    state.move(move);
+    const score = aiMinimax(state, color, 3, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
+    state.undo();
     if (score > bestScore) {
       bestScore = score;
       bestMove = move;
@@ -123,7 +84,8 @@ onmessage = (e: MessageEvent) => {
   switch (input.type) {
     case 'generateMove': {
       const t0 = performance.now();
-      const move = aiDoMinimax(input.state, input.team);
+      const state = new Chess(input.fen);
+      const move = aiDoMinimax(state, state.turn());
       const t1 = performance.now();
       console.log(`AI move generation took ${t1 - t0} ms`);
 

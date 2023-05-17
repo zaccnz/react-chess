@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { PieceType, pieceToFilename } from '../../game/piece';
+import { pieceToFilename } from '../../game/piece';
+import { PieceSymbol } from 'chess.js';
 
 export type MapCoordinateFunc = (x: number, y: number) => [number, number];
 export type OnPlaceFunc = (grid_x: number, grid_y: number) => void;
 export type OnSelectChangedFunc = (selected: boolean) => void;
 
 interface PieceProps {
-  type: PieceType,
+  type: PieceSymbol,
   grid_x: number,
   grid_y: number,
   is_white: boolean,
@@ -27,6 +28,7 @@ interface DragState {
 
 interface PieceImageProps {
   drag_state: DragState | null;
+  moved: boolean;
   gx: number,
   gy: number,
 }
@@ -36,11 +38,20 @@ const PieceImage = styled.img.attrs((props: PieceImageProps) => {
     style: {
       'transform': `translate(${props.drag_state.x - props.drag_state.relx}px, ${props.drag_state.y - props.drag_state.rely}px)`,
       'transition': 'none',
+      'zIndex': 15,
     }
   });
+
+  let inject = {};
+  if (props.moved) {
+    inject = {
+      'zIndex': 10,
+    }
+  }
   return ({
     style: {
       'transform': `translate(${props.gx * 100}%, ${props.gy * 100}%)`,
+      ...inject,
     }
   });
 }) <PieceImageProps>`
@@ -56,6 +67,7 @@ const PieceImage = styled.img.attrs((props: PieceImageProps) => {
 export const ChessPiece: React.FC<PieceProps> = (props) => {
   const pieceRef = useRef<HTMLImageElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [moved, setMoved] = useState<boolean>(false);
 
   const onMouseDown: React.MouseEventHandler<HTMLImageElement> = (e) => {
     e.stopPropagation();
@@ -162,9 +174,19 @@ export const ChessPiece: React.FC<PieceProps> = (props) => {
     };
   }, [drag]);
 
+  useEffect(() => {
+    // if a piece has moved, this will temporarily give it higher z index
+    // this ensures that moving pieces render above their neighbours
+    setMoved(true);
+    setTimeout(() => {
+      setMoved(false);
+    }, 500);
+  }, [props.grid_x, props.grid_y])
+
   return (
     <PieceImage
       drag_state={drag}
+      moved={moved}
       gx={props.grid_x}
       gy={props.grid_y}
       ref={pieceRef}

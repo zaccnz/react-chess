@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCog } from '@fortawesome/free-solid-svg-icons';
+import { Link } from 'react-router-dom';
 
 const HeaderContainer = styled.div`
   display: flex;
@@ -27,7 +28,7 @@ const HeaderButton = styled.h1`
   color: ${props => props.theme.colors.text};
 `;
 
-const HeaderLink = styled.a`
+const HeaderLink = styled(Link)`
   text-decoration: none;
   color: ${props => props.theme.colors.text};
 `;
@@ -40,7 +41,7 @@ export const Header: React.FC<Props> = ({ onClickSettings }) => {
   return (
     <HeaderContainer>
       <HeaderText>
-        <HeaderLink href="/">♘</HeaderLink> react-chess
+        <HeaderLink to="/">♘</HeaderLink> react-chess
       </HeaderText>
       <HeaderSpacer />
       <HeaderButton onClick={onClickSettings}>

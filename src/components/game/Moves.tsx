@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { BOARD_ROWS, ChessMove, Team } from '../../game/chess';
+import { Move } from 'chess.js';
 import { pieceToString } from '../../game/piece';
 import { useChessContext } from '../../providers/ChessProvider';
 
@@ -18,34 +18,41 @@ const MoveItem = styled.p`
   margin: 0px;
 `;
 
-const letters = 'abcdefgh';
-
 export const Moves: React.FC = () => {
-  const { board } = useChessContext();
+  const { history, redoStack } = useChessContext();
 
-  const XYtoPos = (x: number, y: number): string => {
-    return `${letters[x]}${BOARD_ROWS - y}`;
-  };
+  const moveString = (move: Move): string => {
+    let str = (move.flags.indexOf('k') >= 0 || move.flags.indexOf('q') >= 0) ? 'Castled ' : 'Moved ';
+    str += pieceToString(move.piece, move.color === 'w');
+    str += ` from ${move.from} to ${move.to}`;
 
-  const moveString = (move: ChessMove): string => {
-    let str = move.castle !== undefined ? 'Castled ' : 'Moved ';
-    str += pieceToString(move.piece, move.team === Team.WHITE);
-    str += ` from ${XYtoPos(move.from_x, move.from_y)} to ${XYtoPos(move.to_x, move.to_y)}`;
-
-    if (move.takes) {
-      str += ` (took ${pieceToString(move.takes.piece, move.team === Team.BLACK)})`;
+    if (move.captured) {
+      str += ` (took ${pieceToString(move.captured, move.color === 'w')})`;
     }
 
     return str;
   };
 
+  console.log(redoStack);
+
   return (
     <MoveContainer>
       {
-        board.moves.map(
+        history.map(
           (move, i) => {
             return (
-              <MoveItem key={`move_${i}`} style={board.move_index == i ? { fontWeight: 'bold' } : {}}>
+              <MoveItem key={`move_${i}`} style={history.length - 1 === i ? { fontWeight: 'bold' } : {}}>
+                {moveString(move)}
+              </MoveItem>
+            );
+          }
+        )
+      }
+      {
+        [...redoStack].reverse().map(
+          (move, i) => {
+            return (
+              <MoveItem key={`move_redo_${i}`}>
                 {moveString(move)}
               </MoveItem>
             );

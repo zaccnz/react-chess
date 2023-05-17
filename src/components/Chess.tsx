@@ -8,15 +8,6 @@ import { Moves } from './game/Moves';
 import { Fullscreen } from '../util/Fullscreen';
 import { useParams } from 'react-router-dom';
 import { useChessContext } from '../providers/ChessProvider';
-//import Worker from '@/worker/main';
-
-/*
-export const ChessWorker = new Worker();
-
-ChessWorker.postMessage({ 'id': 'newGame' });
-ChessWorker.addEventListener('message', (event) => {
-  if (event.data['id'] == 'debug') console.log('[worker] ' + event.data['msg']);
-});*/
 
 const ChessContainer = styled.div<{ fullscreen: boolean }>`
   ${props => props.fullscreen && `display: flex; 
@@ -75,7 +66,8 @@ export const Chess: React.FC = () => {
   useEffect(() => {
     if (id === 'bot') {
       StartNewGame({ player_white: 'local', player_black: 'bot', positions: 'default' });
-    } else if (id === '') {
+    } else if (!id || id.length === 0) {
+      console.log('hello world');
       StartNewGame({ player_white: 'local', player_black: 'local', positions: 'default' });
     } else {
       setIsConnecting(true);
