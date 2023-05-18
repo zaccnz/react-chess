@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { Chessboard } from './game/Chessboard';
@@ -8,6 +8,7 @@ import { Moves } from './game/Moves';
 import { Fullscreen } from '../util/Fullscreen';
 import { useParams } from 'react-router-dom';
 import { useChessContext } from '../providers/ChessProvider';
+import { SettingsContext } from '@/providers/SettingsProvider';
 
 const ChessContainer = styled.div<{ fullscreen: boolean }>`
   ${props => props.fullscreen && `display: flex; 
@@ -58,12 +59,17 @@ export const Chess: React.FC = () => {
   const [fullscreen, setIsFullscreen] = useState(false);
   const [connecting, setIsConnecting] = useState(false);
   const [connectState, setConnectState] = useState('');
+  const { hasLoaded } = useContext(SettingsContext);
   const { id } = useParams();
   const { StartNewGame } = useChessContext();
   const navigate = useNavigate();
 
 
   useEffect(() => {
+    if (!hasLoaded) {
+      return;
+    }
+
     if (id === 'bot') {
       StartNewGame({ player_white: 'local', player_black: 'bot', positions: 'default' });
     } else if (!id || id.length === 0) {
@@ -72,7 +78,7 @@ export const Chess: React.FC = () => {
       setIsConnecting(true);
       // connect to multiplayer session (if we can)
     }
-  }, []);
+  }, [hasLoaded]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(b => !b);

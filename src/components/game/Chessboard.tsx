@@ -137,7 +137,6 @@ export const Chessboard: React.FC = () => {
   const { board, turn, PotentialMoves, MakeMove, Promote } = useChessContext();
   const [selected, setSelected] = useState<GridPosition | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
-  //const [_, setTime] = useState(ChessTimeSinceStarted(board));
   const [moveError, setMoveError] = useState('');
   const [promotion, setPromotion] = useState<{ from: Square, to: Square } | undefined>(undefined);
 
@@ -151,12 +150,8 @@ export const Chessboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      // setTime(ChessTimeSinceStarted(board));
-    }, 1000);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => {
-      clearInterval(interval);
       document.removeEventListener('touchmove', onTouchMove);
     };
   }, []);

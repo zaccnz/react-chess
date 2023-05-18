@@ -17,7 +17,7 @@ const HomeButtonContainer = styled.div`
   display: flex;
   flex-direction: row;
   justify-content: space-around;
-  max-width: 600px;
+  max-width: 200px;
   margin: 0 auto;
 `;
 
@@ -26,6 +26,9 @@ const HomeButton = styled(Link)`
   padding: 10px;
   border-radius: 10px;
   border: 2px solid #000;
+  font-size: 2em;
+  margin: 0.5em;
+  text-align: center;
 `;
 
 export const Home: React.FC = () => {
@@ -33,12 +36,12 @@ export const Home: React.FC = () => {
     <HomeContainer>
       <HomeHeader>create a game</HomeHeader>
       <HomeButtonContainer>
-        <HomeButton to="/game">local vs</HomeButton>
-        <HomeButton to="/game/bot">bot vs</HomeButton>
-        <HomeButton to="/lobby">online friend vs</HomeButton>
+        <HomeButton to="/game">local</HomeButton>
+        <HomeButton to="/game/bot">bot</HomeButton>
+        <HomeButton to="/lobby">online</HomeButton>
       </HomeButtonContainer>
       <HomeParagraph>
-        play chess against a player locally, a bot or an online player.
+        play chess against a local player, a bot, or an online player.
       </HomeParagraph>
     </HomeContainer >
   );

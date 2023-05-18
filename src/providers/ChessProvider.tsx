@@ -3,7 +3,7 @@ import { SettingsContext } from './SettingsProvider';
 
 import BotWorker from '@/game/bot?worker';
 import { BotMessage, BotResult } from '@/game/bot';
-import { Chess, Color, Move, Piece, PieceSymbol, Square } from 'chess.js';
+import { Chess, Color, Move, PieceSymbol, Square } from 'chess.js';
 
 export type PlayerType = 'local' | 'bot' | 'online';
 
@@ -28,12 +28,14 @@ type PotentialMoves_Func = (from_x: number, from_y: number) => { to: Square, fla
 type UndoMove_Func = () => boolean;
 type RedoMove_Func = () => boolean;
 type Pause_Func = () => boolean;
+type OutOfTime_Func = () => void;
 
 type Board = ({ type: PieceSymbol, team: Color, uid: string } | null)[][];
 type Captured = Record<Color, PieceSymbol[]>;
 type MoveUID = { taken?: string };
-type GameOver = { checkmate: boolean, check: boolean, draw: boolean, threefoldRepitition: boolean, insufficientMaterial: boolean };
+type GameOver = { checkmate: boolean, draw: boolean, threefoldRepitition: boolean, insufficientMaterial: boolean, outOfTime: boolean, };
 type Names = Record<Color, string>;
+type Timer = Record<Color, { set?: number, time: number }>;
 
 interface ChessInterface {
   board: Board,
@@ -43,6 +45,8 @@ interface ChessInterface {
   redoStack: Move[],
   gameOver?: GameOver,
   names: Names,
+  timer: Timer,
+  check: Record<Color, boolean>,
   StartNewGame: StartNewGame_Func;
   MakeMove: MakeMove_Func;
   Promote: Promote_Func;
@@ -50,6 +54,7 @@ interface ChessInterface {
   UndoMove: UndoMove_Func;
   RedoMove: RedoMove_Func;
   Pause: Pause_Func;
+  OutOfTime: OutOfTime_Func;
 }
 
 export const ChessContext = createContext<ChessInterface | null>(null);
@@ -73,8 +78,10 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
   const [history, setHistory] = useState<Move[]>([]);
   const [redoStack, setRedoStack] = useState<Move[]>([]);
   const [gameOver, setGameOver] = useState<GameOver | undefined>(undefined);
-  const [captured, setCaptured] = useState<Captured>({ 'w': [], 'b': [] });
+  const [captured, setCaptured] = useState<Captured>({ w: [], b: [] });
   const [names, setNames] = useState<Names>({ w: '', b: '' });
+  const [timer, setTimer] = useState<Timer>({ w: { time: 0 }, b: { time: 0 } });
+  const [check, setCheck] = useState<Record<Color, boolean>>({ w: false, b: false });
 
   const stateRef = useRef(new Chess());
   const workerRef = useRef(new BotWorker());
@@ -84,13 +91,69 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
   const pieceUidsRef = useRef<Record<string, string>>({});
   const moveUidsTrackerRef = useRef<MoveUID[]>([]);
 
+  const timerNextMove = () => {
+    setTimer(timer => {
+      let { w, b } = timer;
+      if (stateRef.current.turn() === 'b') {
+        b.set = new Date().getTime();
+        if (w.set) {
+          const elapsed = (b.set - w.set) / 1000;
+          w.time -= elapsed;
+        }
+        w.set = undefined;
+      } else {
+        w.set = new Date().getTime();
+        if (b.set) {
+          const elapsed = (w.set - b.set) / 1000;
+          b.time -= elapsed;
+        }
+        b.set = undefined;
+      }
+      return { w, b };
+    });
+  }
+
+  const timerCheck = (): boolean => {
+    const now = new Date().getTime();
+    const { set, time } = timer.w.set ? timer.w : timer.b;
+    if (!set) {
+      return true;
+    }
+
+    const elasped = (now - set) / 1000;
+    if (time - elasped <= 0) {
+      setGameOver({
+        checkmate: stateRef.current.isCheckmate(),
+        draw: stateRef.current.isDraw(),
+        insufficientMaterial: stateRef.current.isInsufficientMaterial(),
+        threefoldRepitition: stateRef.current.isThreefoldRepetition(),
+        outOfTime: true,
+      });
+
+      setTimer(timer => {
+        return {
+          w: { time: timer.w.set ? timer.w.time - elasped : timer.w.time },
+          b: { time: timer.b.set ? timer.b.time - elasped : timer.b.time },
+        };
+      });
+      return false;
+    }
+
+    return true;
+  }
+
   workerRef.current.onmessage = (e) => {
     const result = e.data as BotResult;
     switch (result.type) {
       case 'success': {
+        if (!timerCheck()) {
+          return;
+        }
+
         try {
           const move = stateRef.current.move(result.move);
           doUpdateUids(move);
+          timerNextMove();
           updateBoard();
         } catch (e) {
           console.error('Bot movement error');
@@ -133,15 +196,22 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
           )
         )
     );
+    setCheck(check => {
+      // if a player just made a move, they must not be in check
+      check = { w: false, b: false };
+      // but their enemy may now be in check
+      check[stateRef.current.turn()] = stateRef.current.inCheck();
+      return { ...check };
+    })
     setHistory(stateRef.current.history({ verbose: true }));
     setRedoStack([...redoStackRef.current]);
     if (stateRef.current.isGameOver()) {
       setGameOver({
-        check: stateRef.current.isCheck(),
         checkmate: stateRef.current.isCheckmate(),
         draw: stateRef.current.isDraw(),
         insufficientMaterial: stateRef.current.isInsufficientMaterial(),
         threefoldRepitition: stateRef.current.isThreefoldRepetition(),
+        outOfTime: false,
       });
     } else {
       setGameOver(undefined);
@@ -250,21 +320,34 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
     redoStack,
     gameOver,
     names,
+    timer,
+    check,
     StartNewGame: (config: ChessConfig): void => {
       configRef.current = config;
       stateRef.current = new Chess();
       pieceUidsRef.current = {};
       redoStackRef.current = [];
+      setTimer({
+        'w': { time: gameLength * 60 },
+        'b': { time: gameLength * 60 },
+      });
 
       // TODO: username resolution for online play
       setNames({
         'w': config.player_white,
         'b': config.player_black,
-      })
+      });
       setCaptured({ 'w': [], 'b': [] });
       updateBoard();
     },
     MakeMove: (from: Square, to: Square): boolean => {
+      if (gameOver) {
+        return false;
+      }
+      if (!timerCheck()) {
+        return false;
+      }
+
       redoStackRef.current = [];
       try {
         const move = stateRef.current.move({ from, to });
@@ -277,10 +360,19 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
         return false;
       }
 
+      timerNextMove();
+
       updateBoard();
       return true;
     },
     Promote: (from, to, promotion) => {
+      if (gameOver) {
+        return false;
+      }
+      if (!timerCheck()) {
+        return false;
+      }
+
       redoStackRef.current = [];
       try {
         const move = stateRef.current.move({ from, to, promotion });
@@ -300,11 +392,19 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       return stateRef.current.moves({ square: XYtoSquare(from_x, from_y), verbose: true });
     },
     UndoMove: (): boolean => {
+      if (gameOver) {
+        return false;
+      }
+      if (!timerCheck()) {
+        return false;
+      }
+
       let move = stateRef.current.undo();
       if (move === null) {
         return false;
       }
       undoUpdateUids(move);
+      timerNextMove();
 
       if (move.captured) {
         undoCapture(move.color, move.captured);
@@ -315,6 +415,13 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       return true;
     },
     RedoMove: (): boolean => {
+      if (gameOver) {
+        return false;
+      }
+      if (!timerCheck()) {
+        return false;
+      }
+
       if (redoStackRef.current.length === 0) {
         return false;
       }
@@ -326,6 +433,7 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
 
       stateRef.current.move({ to: move.to, from: move.from, promotion: move.promotion });
       doUpdateUids(move);
+      timerNextMove();
 
       if (move.captured) {
         doCapture(move.color, move.captured);
@@ -336,9 +444,19 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       return true;
     },
     Pause: (): boolean => {
+      if (gameOver) {
+        return false;
+      }
+      if (!timerCheck()) {
+        return false;
+      }
+
       if (!allowPause) return false;
       return true;
-    }
+    },
+    OutOfTime: () => {
+      timerCheck();
+    },
   };
 
   return (

@@ -40,10 +40,7 @@ const PlayersName = styled.p`
 `;
 
 const PlayerStatus = styled.span`
-  padding: 0px;
-  margin: 0px;
   font-size: 10px;
-  vertical-align: super;
   background: #ff0000;
   border-radius: 7px;
   padding: 2px 4px;
@@ -81,6 +78,10 @@ interface PlayerDataUI {
   details: string;
   turn: boolean;
   lost_pieces: PieceSymbol[];
+  timer: {
+    minutes: number,
+    seconds: number,
+  };
 }
 
 const EmptyPlayerDataUI: PlayerDataUI = {
@@ -89,28 +90,38 @@ const EmptyPlayerDataUI: PlayerDataUI = {
   status: '',
   details: '',
   turn: false,
-  lost_pieces: []
+  lost_pieces: [],
+  timer: {
+    minutes: 0,
+    seconds: 0,
+  },
 };
 
 export const Players: React.FC = () => {
-  const { captured, turn, gameOver, names } = useChessContext();
+  const { captured, turn, gameOver, names, timer, check, OutOfTime } = useChessContext();
 
   const [players, setPlayers] = useState<PlayerDataUI[]>([
-    { ...EmptyPlayerDataUI, lost_pieces: [...EmptyPlayerDataUI.lost_pieces] },
-    { ...EmptyPlayerDataUI, lost_pieces: [...EmptyPlayerDataUI.lost_pieces] },
+    { ...EmptyPlayerDataUI, lost_pieces: [...EmptyPlayerDataUI.lost_pieces], timer: { ...EmptyPlayerDataUI.timer } },
+    { ...EmptyPlayerDataUI, lost_pieces: [...EmptyPlayerDataUI.lost_pieces], timer: { ...EmptyPlayerDataUI.timer } },
   ]);
 
   const fillPlayerData = () => {
     setPlayers(players => {
-      players.map((p, i) => {
+      players.forEach((p, i) => {
         const colour: Color = i === 0 ? 'w' : 'b';
         p.icon = pieceToString('k', colour === 'w');
 
+        if (check[colour]) {
+          p.status = "CHECK";
+        } else {
+          p.status = '';
+        }
+
         if (colour === turn && gameOver) {
-          if (gameOver.checkmate) {
+          if (gameOver.outOfTime) {
+            p.status = 'OUT OF TIME'
+          } else if (gameOver.checkmate) {
             p.status = 'CHECKMATE';
-          } else if (gameOver.check) {
-            p.status = 'CHECK';
           } else if (gameOver.insufficientMaterial) {
             p.status = 'insufficient material';
           } else if (gameOver.threefoldRepitition) {
@@ -130,9 +141,43 @@ export const Players: React.FC = () => {
     });
   };
 
+  const updatePlayerTimers = () => {
+    setPlayers(players => {
+      players.forEach((p, i) => {
+        const colour: Color = i === 0 ? 'w' : 'b';
+
+        const { set, time } = timer[colour];
+        let elapsed = 0;
+        if (set) {
+          elapsed = (new Date().getTime() - set) / 1000;
+        }
+
+        let timeLeft = time - elapsed;
+        if (timeLeft <= 0) {
+          OutOfTime();
+          timeLeft = 0;
+        }
+        p.timer.minutes = Math.floor(timeLeft / 60);
+        p.timer.seconds = Math.floor(timeLeft) % 60;
+      });
+
+      return [...players];
+    })
+  }
+
   useEffect(() => {
     fillPlayerData();
   }, [captured, turn, gameOver, names]);
+
+  useEffect(() => {
+    updatePlayerTimers();
+    const timeout = setInterval(() => {
+      updatePlayerTimers();
+    }, 1000);
+    return () => {
+      clearInterval(timeout);
+    }
+  }, [timer]);
 
   return (
     <PlayersContainer style={{ gridArea: 'players' }}>
@@ -144,7 +189,7 @@ export const Players: React.FC = () => {
               {v.name} {v.status !== '' && <PlayerStatus>{v.status}</PlayerStatus>}
             </PlayersName>
             <PlayerDetails>
-              {v.details}
+              {v.timer.minutes}:{v.timer.seconds.toString().padStart(2, '0')}
             </PlayerDetails>
             <PlayerPieces>
               {v.lost_pieces.map(p => pieceToString(p, i == 1))}
