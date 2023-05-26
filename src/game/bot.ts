@@ -1,4 +1,4 @@
-import { Chess, Color, PieceSymbol, Square } from 'chess.js';
+import { Chess, Color, Move, PieceSymbol, Square } from 'chess.js';
 
 export type BotMessage = {
   type: 'generateMove',
@@ -7,7 +7,7 @@ export type BotMessage = {
 
 export type BotResult = {
   type: 'success',
-  move: string,
+  move: Move,
 } | {
   type: 'failed',
 };
@@ -17,7 +17,7 @@ const scorePiece = (piece: PieceSymbol, ours: boolean): number => {
   let cost = 0;
   switch (piece) {
     case 'p': cost = 10; break;
-    case 'k': cost = 30; break;
+    case 'n': cost = 30; break;
     case 'b': cost = 30; break;
     case 'r': cost = 50; break;
     case 'q': cost = 90; break;
@@ -62,7 +62,7 @@ const aiMinimax = (state: Chess, color: Color, depth: number, alpha: number, bet
   }
 };
 
-const aiDoMinimax = (state: Chess, color: Color): string | undefined => {
+const aiDoMinimax = (state: Chess, color: Color): Move | undefined => {
   const moves = state.moves();
   let bestMove = undefined;
   let bestScore = Number.NEGATIVE_INFINITY;
@@ -75,7 +75,10 @@ const aiDoMinimax = (state: Chess, color: Color): string | undefined => {
       bestMove = move;
     }
   }
-  return bestMove;
+
+  if (!bestMove) return;
+
+  return state.move(bestMove);
 };
 
 onmessage = (e: MessageEvent) => {

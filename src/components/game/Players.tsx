@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { pieceToString } from '../../game/piece';
 import { Color, PieceSymbol } from 'chess.js';
 import { useChessContext } from '../../providers/ChessProvider';
+import { CompleteFlag } from '@/game/state';
 
 const PlayersContainer = styled.div`
   display: flex;
@@ -98,7 +99,7 @@ const EmptyPlayerDataUI: PlayerDataUI = {
 };
 
 export const Players: React.FC = () => {
-  const { captured, turn, gameOver, names, timer, check, OutOfTime } = useChessContext();
+  const { state: { players: lobbyPlayers, captured, turn, complete, timers, check }, OutOfTime } = useChessContext();
 
   const [players, setPlayers] = useState<PlayerDataUI[]>([
     { ...EmptyPlayerDataUI, lost_pieces: [...EmptyPlayerDataUI.lost_pieces], timer: { ...EmptyPlayerDataUI.timer } },
@@ -117,22 +118,22 @@ export const Players: React.FC = () => {
           p.status = '';
         }
 
-        if (colour === turn && gameOver) {
-          if (gameOver.outOfTime) {
+        if (colour === turn && complete) {
+          if (complete.indexOf(CompleteFlag.OUT_OF_TIME) >= 0) {
             p.status = 'OUT OF TIME'
-          } else if (gameOver.checkmate) {
+          } else if (complete.indexOf(CompleteFlag.CHECKMATE) >= 0) {
             p.status = 'CHECKMATE';
-          } else if (gameOver.insufficientMaterial) {
+          } else if (complete.indexOf(CompleteFlag.INSUFFICIENT_MATERIAL) >= 0) {
             p.status = 'insufficient material';
-          } else if (gameOver.threefoldRepitition) {
+          } else if (complete.indexOf(CompleteFlag.THREEFOLD_REPITITION) >= 0) {
             p.status = 'threefold repitition';
           }
         }
 
-        if (gameOver && gameOver.draw) {
+        if (complete && complete.indexOf(CompleteFlag.DRAW) >= 0) {
           p.status = 'draw';
         }
-        p.name = names[colour];
+        p.name = lobbyPlayers[colour].name;
         p.turn = turn === colour;
         p.lost_pieces = [...captured[colour]];
       });
@@ -146,7 +147,7 @@ export const Players: React.FC = () => {
       players.forEach((p, i) => {
         const colour: Color = i === 0 ? 'w' : 'b';
 
-        const { set, time } = timer[colour];
+        const { set, time } = timers[colour];
         let elapsed = 0;
         if (set) {
           elapsed = (new Date().getTime() - set) / 1000;
@@ -154,7 +155,6 @@ export const Players: React.FC = () => {
 
         let timeLeft = time - elapsed;
         if (timeLeft <= 0) {
-          OutOfTime();
           timeLeft = 0;
         }
         p.timer.minutes = Math.floor(timeLeft / 60);
@@ -167,17 +167,22 @@ export const Players: React.FC = () => {
 
   useEffect(() => {
     fillPlayerData();
-  }, [captured, turn, gameOver, names]);
+  }, [captured, turn, complete, lobbyPlayers]);
 
   useEffect(() => {
     updatePlayerTimers();
     const timeout = setInterval(() => {
       updatePlayerTimers();
+      for (const player of players) {
+        if (player.timer.minutes === 0 && player.timer.seconds === 0) {
+          OutOfTime();
+        }
+      }
     }, 1000);
     return () => {
       clearInterval(timeout);
     }
-  }, [timer]);
+  }, [timers]);
 
   return (
     <PlayersContainer style={{ gridArea: 'players' }}>

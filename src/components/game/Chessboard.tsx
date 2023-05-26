@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import styled, { DefaultTheme } from 'styled-components';
 import { SquareToXY, XYtoSquare, useChessContext } from '../../providers/ChessProvider';
 import { Error } from '../../util/Error';
 import { ChessPiece } from './ChessPiece';
 import { Color, PieceSymbol, Square } from 'chess.js';
 import { pieceToFilename, pieceToName, pieceToString } from '@/game/piece';
+import { LobbyContext } from '@/providers/LobbyProvider';
 
 interface MoveProps {
   grid_x: number,
@@ -134,11 +135,12 @@ interface GridPosition {
 }
 
 export const Chessboard: React.FC = () => {
-  const { board, turn, PotentialMoves, MakeMove, Promote } = useChessContext();
+  const { state: { board, turn }, PotentialMoves, MakeMove, Promote } = useChessContext();
   const [selected, setSelected] = useState<GridPosition | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [moveError, setMoveError] = useState('');
   const [promotion, setPromotion] = useState<{ from: Square, to: Square } | undefined>(undefined);
+  const lobby = useContext(LobbyContext);
 
   const onTouchMove = (e: TouchEvent) => {
     if (!e.target || !boardRef.current) return;
@@ -237,7 +239,7 @@ export const Chessboard: React.FC = () => {
                 pixels_to_grid={pixelsToGrid}
                 grid_to_pixels={gridToPixels}
                 on_select_change={(selected) => selected ? setSelected({ grid_x: v.x, grid_y: v.y }) : setSelected(null)}
-                can_click={v.team === turn}
+                can_click={(v.team === turn && (!lobby || (lobby.type === 'ingame' && lobby.lobby.players[turn]?.uid === lobby.uid))) ?? false}
               />
           )
       }

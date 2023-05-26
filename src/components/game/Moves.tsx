@@ -21,7 +21,7 @@ const MoveItem = styled.p`
 
 export const Moves: React.FC = () => {
   const { useChessNotation } = useContext(SettingsContext);
-  const { history, redoStack } = useChessContext();
+  const { state: { moves, redoStack } } = useChessContext();
 
   const moveString = (move: Move): string => {
     if (useChessNotation) {
@@ -54,10 +54,10 @@ export const Moves: React.FC = () => {
   return (
     <MoveContainer>
       {
-        history.map(
+        moves.map(
           (move, i) => {
             return (
-              <MoveItem key={`move_${i}`} style={history.length - 1 === i ? { fontWeight: 'bold' } : {}}>
+              <MoveItem key={`move_${i}`} style={moves.length - 1 === i ? { fontWeight: 'bold' } : {}}>
                 {moveString(move)}
               </MoveItem>
             );

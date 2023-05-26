@@ -4,6 +4,8 @@ import { SettingsContext } from './SettingsProvider';
 import BotWorker from '@/game/bot?worker';
 import { BotMessage, BotResult } from '@/game/bot';
 import { Chess, Color, Move, PieceSymbol, Square } from 'chess.js';
+import { ChessState, chessReducer, createChessState, syncGame } from '@/game/state';
+import { LobbyContext, useLobbyContext } from './LobbyProvider';
 
 export type PlayerType = 'local' | 'bot' | 'online';
 
@@ -30,23 +32,8 @@ type RedoMove_Func = () => boolean;
 type Pause_Func = () => boolean;
 type OutOfTime_Func = () => void;
 
-type Board = ({ type: PieceSymbol, team: Color, uid: string } | null)[][];
-type Captured = Record<Color, PieceSymbol[]>;
-type MoveUID = { taken?: string };
-type GameOver = { checkmate: boolean, draw: boolean, threefoldRepitition: boolean, insufficientMaterial: boolean, outOfTime: boolean, };
-type Names = Record<Color, string>;
-type Timer = Record<Color, { set?: number, time: number }>;
-
 interface ChessInterface {
-  board: Board,
-  captured: Captured,
-  turn: Color,
-  history: Move[],
-  redoStack: Move[],
-  gameOver?: GameOver,
-  names: Names,
-  timer: Timer,
-  check: Record<Color, boolean>,
+  state: ChessState,
   StartNewGame: StartNewGame_Func;
   MakeMove: MakeMove_Func;
   Promote: Promote_Func;
@@ -62,7 +49,7 @@ export const ChessContext = createContext<ChessInterface | null>(null);
 export const useChessContext = (): ChessInterface => {
   const chessCtx = useContext(ChessContext);
   if (chessCtx === null) {
-    throw new Error('Chess state has not been created.');
+    throw new Error('Chess context has not been created.');
   }
   return chessCtx;
 };
@@ -73,92 +60,24 @@ interface ChessProviderProps {
 
 export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
   const { allowPause, defaultUsername, gameLength } = useContext(SettingsContext);
-  const [board, setBoard] = useState<Board>([]);
-  const [turn, setTurn] = useState<Color>('w');
-  const [history, setHistory] = useState<Move[]>([]);
-  const [redoStack, setRedoStack] = useState<Move[]>([]);
-  const [gameOver, setGameOver] = useState<GameOver | undefined>(undefined);
-  const [captured, setCaptured] = useState<Captured>({ w: [], b: [] });
-  const [names, setNames] = useState<Names>({ w: '', b: '' });
-  const [timer, setTimer] = useState<Timer>({ w: { time: 0 }, b: { time: 0 } });
-  const [check, setCheck] = useState<Record<Color, boolean>>({ w: false, b: false });
-
+  const [state, setState] = useState(createChessState(gameLength, { w: { name: 'loading', type: 'local' }, b: { name: 'loading', type: 'local' } }));
   const stateRef = useRef(new Chess());
   const workerRef = useRef(new BotWorker());
   const configRef = useRef<ChessConfig | undefined>(undefined);
-
-  const redoStackRef = useRef<Move[]>([]);
-  const pieceUidsRef = useRef<Record<string, string>>({});
-  const moveUidsTrackerRef = useRef<MoveUID[]>([]);
-
-  const timerNextMove = () => {
-    setTimer(timer => {
-      let { w, b } = timer;
-      if (stateRef.current.turn() === 'b') {
-        b.set = new Date().getTime();
-        if (w.set) {
-          const elapsed = (b.set - w.set) / 1000;
-          w.time -= elapsed;
-        }
-        w.set = undefined;
-      } else {
-        w.set = new Date().getTime();
-        if (b.set) {
-          const elapsed = (w.set - b.set) / 1000;
-          b.time -= elapsed;
-        }
-        b.set = undefined;
-      }
-      return { w, b };
-    });
-  }
-
-  const timerCheck = (): boolean => {
-    const now = new Date().getTime();
-    const { set, time } = timer.w.set ? timer.w : timer.b;
-    if (!set) {
-      return true;
-    }
-
-    const elasped = (now - set) / 1000;
-    if (time - elasped <= 0) {
-      setGameOver({
-        checkmate: stateRef.current.isCheckmate(),
-        draw: stateRef.current.isDraw(),
-        insufficientMaterial: stateRef.current.isInsufficientMaterial(),
-        threefoldRepitition: stateRef.current.isThreefoldRepetition(),
-        outOfTime: true,
-      });
-
-      setTimer(timer => {
-        return {
-          w: { time: timer.w.set ? timer.w.time - elasped : timer.w.time },
-          b: { time: timer.b.set ? timer.b.time - elasped : timer.b.time },
-        };
-      });
-      return false;
-    }
-
-    return true;
-  }
+  const lobby = useContext(LobbyContext);
 
   workerRef.current.onmessage = (e) => {
     const result = e.data as BotResult;
     switch (result.type) {
       case 'success': {
-        if (!timerCheck()) {
-          return;
-        }
-
-        try {
-          const move = stateRef.current.move(result.move);
-          doUpdateUids(move);
-          timerNextMove();
-          updateBoard();
-        } catch (e) {
-          console.error('Bot movement error');
-          console.error(e);
-        }
+        setState(oldState => chessReducer(oldState, {
+          type: 'move',
+          from: result.move.from,
+          to: result.move.to,
+          promotion: result.move.promotion,
+          time: new Date().getTime(),
+          chess: stateRef.current,
+        }));
         break;
       }
       case 'failed': {
@@ -169,293 +88,111 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
   }
 
   useEffect(() => {
-    const thisPlayer = (turn === 'b' ? configRef.current?.player_black : configRef.current?.player_white);
-    if (thisPlayer === 'bot' && redoStackRef.current.length === 0) {
+    const thisPlayer = (state.turn === 'b' ? configRef.current?.player_black : configRef.current?.player_white);
+    if (thisPlayer === 'bot' && state.redoStack.length === 0) {
       workerRef.current.postMessage({
         type: 'generateMove',
         fen: stateRef.current.fen(),
-        team: turn,
+        team: state.turn,
       } as BotMessage);
-    }
-  }, [turn]);
-
-  const updateBoard = () => {
-    const board = stateRef.current.board();
-    if (Object.keys(pieceUidsRef.current).length === 0) {
-
-      board.flat().map((key, i) => {
-        if (key === null) return;
-        pieceUidsRef.current[key.square] = `${i}`;
-      });
-    }
-    setBoard(
-      stateRef.current.board()
-        .map(row => row
-          .map(value => value ?
-            { type: value.type, team: value.color, uid: pieceUidsRef.current[value.square] } : value
-          )
-        )
-    );
-    setCheck(check => {
-      // if a player just made a move, they must not be in check
-      check = { w: false, b: false };
-      // but their enemy may now be in check
-      check[stateRef.current.turn()] = stateRef.current.inCheck();
-      return { ...check };
-    })
-    setHistory(stateRef.current.history({ verbose: true }));
-    setRedoStack([...redoStackRef.current]);
-    if (stateRef.current.isGameOver()) {
-      setGameOver({
-        checkmate: stateRef.current.isCheckmate(),
-        draw: stateRef.current.isDraw(),
-        insufficientMaterial: stateRef.current.isInsufficientMaterial(),
-        threefoldRepitition: stateRef.current.isThreefoldRepetition(),
-        outOfTime: false,
-      });
-    } else {
-      setGameOver(undefined);
-    }
-    setTurn(stateRef.current.turn());
-  }
-
-  const doCapture = (colour: Color, piece: PieceSymbol) => {
-    setCaptured((captured) => {
-      let { w, b } = captured;
-      (colour === 'w' ? w : b).push(piece);
-      return {
-        w, b
+    } else if (lobby?.type === 'ingame') {
+      const lastPlayer = lobby.lobby.players[state.turn === 'w' ? 'b' : 'w'];
+      const stateMoves = state.moves?.length ?? 0;
+      const lobbyMoves = lobby.lobby.game.moves?.length ?? 0;
+      if (lastPlayer && lastPlayer.uid === lobby.uid && stateMoves > lobbyMoves) {
+        lobby.Sync(state);
       }
-    });
-  }
-
-  const undoCapture = (colour: Color, piece: PieceSymbol) => {
-    setCaptured((captured) => {
-      let { w, b } = captured;
-      if (colour === 'w') {
-        const index = w.indexOf(piece);
-        w = w.filter((_, i) => i !== index);
-      } else {
-        const index = b.indexOf(piece);
-        b = b.filter((_, i) => i !== index);
-      }
-      return {
-        w, b
-      }
-    })
-  }
-
-  const doUpdateUids = (move: Move) => {
-    const tracked: MoveUID = {};
-    // needs to handle -> captures, castling
-    if (move.captured) {
-      // get stored uid
-      tracked.taken = pieceUidsRef.current[move.to];
-      pieceUidsRef.current[move.to] = pieceUidsRef.current[move.from];
-      delete pieceUidsRef.current[move.from];
-    } else if (move.flags.indexOf('k') >= 0) {
-      // swap uids for both king and castle (kingside)
-      pieceUidsRef.current[move.to] = pieceUidsRef.current[move.from];
-      delete pieceUidsRef.current[move.from];
-      const castleFrom = `h${move.from[1]}`;
-      const castleTo = `f${move.from[1]}`;
-      pieceUidsRef.current[castleTo] = pieceUidsRef.current[castleFrom];
-      delete pieceUidsRef.current[castleFrom];
-    } else if (move.flags.indexOf('q') >= 0) {
-      // swap uids for both king and castle (queenside)
-      pieceUidsRef.current[move.to] = pieceUidsRef.current[move.from];
-      delete pieceUidsRef.current[move.from];
-      const castleFrom = `a${move.from[1]}`;
-      const castleTo = `d${move.from[1]}`;
-      pieceUidsRef.current[castleTo] = pieceUidsRef.current[castleFrom];
-      delete pieceUidsRef.current[castleFrom];
-    } else {
-      // normal move, just move uid
-      pieceUidsRef.current[move.to] = pieceUidsRef.current[move.from];
-      delete pieceUidsRef.current[move.from];
     }
+  }, [state.turn]);
 
-    moveUidsTrackerRef.current.push(tracked);
-  }
-
-  const undoUpdateUids = (move: Move) => {
-    const update = moveUidsTrackerRef.current.pop();
-    if (move.captured) {
-      // get stored uid
-      pieceUidsRef.current[move.from] = pieceUidsRef.current[move.to];
-      if (update && update.taken) {
-        pieceUidsRef.current[move.to] = update.taken;
-      } else {
-        console.error('move UID tracker made a mistake');
-        delete pieceUidsRef.current[move.to];
-      }
-    } else if (move.flags.indexOf('k') >= 0) {
-      // swap uids for both king and castle (kingside)
-      pieceUidsRef.current[move.from] = pieceUidsRef.current[move.to];
-      delete pieceUidsRef.current[move.to];
-      const castleFrom = `h${move.from[1]}`;
-      const castleTo = `f${move.from[1]}`;
-      pieceUidsRef.current[castleFrom] = pieceUidsRef.current[castleTo];
-      delete pieceUidsRef.current[castleTo];
-    } else if (move.flags.indexOf('q') >= 0) {
-      // swap uids for both king and castle (queenside)
-      pieceUidsRef.current[move.from] = pieceUidsRef.current[move.to];
-      delete pieceUidsRef.current[move.to];
-      const castleFrom = `a${move.from[1]}`;
-      const castleTo = `d${move.from[1]}`;
-      pieceUidsRef.current[castleFrom] = pieceUidsRef.current[castleTo];
-      delete pieceUidsRef.current[castleTo];
-    } else {
-      // normal move, just move uid
-      pieceUidsRef.current[move.from] = pieceUidsRef.current[move.to];
-      delete pieceUidsRef.current[move.to];
+  useEffect(() => {
+    if (lobby?.type === 'ingame') {
+      const lobbyData = lobby.lobby;
+      setState(state => {
+        const next = syncGame(state, lobbyData, lobby.uid, stateRef.current, new Date().getTime());
+        if (typeof next === 'string') {
+          alert('Anti-cheat triggered: ' + next);
+          console.error('found cheater!')
+          console.error(next);
+        } else {
+          return next;
+        }
+        return state;
+      })
     }
-  }
+  }, [lobby]);
 
   const contextValue: ChessInterface = {
-    board,
-    captured,
-    turn,
-    history,
-    redoStack,
-    gameOver,
-    names,
-    timer,
-    check,
+    state,
     StartNewGame: (config: ChessConfig): void => {
       configRef.current = config;
       stateRef.current = new Chess();
-      pieceUidsRef.current = {};
-      redoStackRef.current = [];
-      setTimer({
-        'w': { time: gameLength * 60 },
-        'b': { time: gameLength * 60 },
-      });
-
-      // TODO: username resolution for online play
-      setNames({
-        'w': config.player_white,
-        'b': config.player_black,
-      });
-      setCaptured({ 'w': [], 'b': [] });
-      updateBoard();
+      setState(createChessState(gameLength, {
+        w: {
+          name: 'WHITE',
+          type: config.player_white,
+        },
+        b: {
+          name: config.player_black === 'bot' ? 'BOT' : 'BLACK',
+          type: config.player_black,
+        },
+      }));
     },
     MakeMove: (from: Square, to: Square): boolean => {
-      if (gameOver) {
-        return false;
-      }
-      if (!timerCheck()) {
-        return false;
-      }
-
-      redoStackRef.current = [];
-      try {
-        const move = stateRef.current.move({ from, to });
-        doUpdateUids(move);
-
-        if (move.captured) {
-          doCapture(move.color, move.captured);
-        }
-      } catch (e) {
-        return false;
-      }
-
-      timerNextMove();
-
-      updateBoard();
+      setState(oldState => chessReducer(oldState, {
+        type: 'move',
+        from,
+        to,
+        time: new Date().getTime(),
+        chess: stateRef.current,
+      }));
       return true;
     },
     Promote: (from, to, promotion) => {
-      if (gameOver) {
-        return false;
-      }
-      if (!timerCheck()) {
-        return false;
-      }
-
-      redoStackRef.current = [];
-      try {
-        const move = stateRef.current.move({ from, to, promotion });
-        doUpdateUids(move);
-
-        if (move.captured) {
-          doCapture(move.color, move.captured);
-        }
-      } catch (e) {
-        return false;
-      }
-
-      updateBoard();
+      setState(oldState => chessReducer(oldState, {
+        type: 'move',
+        from,
+        to,
+        promotion,
+        time: new Date().getTime(),
+        chess: stateRef.current,
+      }));
       return true;
     },
     PotentialMoves: (from_x: number, from_y: number): { to: Square, flags: string }[] => {
       return stateRef.current.moves({ square: XYtoSquare(from_x, from_y), verbose: true });
     },
     UndoMove: (): boolean => {
-      if (gameOver) {
-        return false;
-      }
-      if (!timerCheck()) {
-        return false;
-      }
-
-      let move = stateRef.current.undo();
-      if (move === null) {
-        return false;
-      }
-      undoUpdateUids(move);
-      timerNextMove();
-
-      if (move.captured) {
-        undoCapture(move.color, move.captured);
-      }
-
-      redoStackRef.current.push(move);
-      updateBoard();
+      setState(oldState => chessReducer(oldState, {
+        type: 'undo',
+        time: new Date().getTime(),
+        chess: stateRef.current,
+      }));
       return true;
     },
     RedoMove: (): boolean => {
-      if (gameOver) {
-        return false;
-      }
-      if (!timerCheck()) {
-        return false;
-      }
-
-      if (redoStackRef.current.length === 0) {
-        return false;
-      }
-
-      let move = redoStackRef.current.pop();
-      if (move === undefined) {
-        return false;
-      }
-
-      stateRef.current.move({ to: move.to, from: move.from, promotion: move.promotion });
-      doUpdateUids(move);
-      timerNextMove();
-
-      if (move.captured) {
-        doCapture(move.color, move.captured);
-      }
-
-      updateBoard();
-
+      setState(oldState => chessReducer(oldState, {
+        type: 'redo',
+        time: new Date().getTime(),
+        chess: stateRef.current,
+      }));
       return true;
     },
     Pause: (): boolean => {
-      if (gameOver) {
-        return false;
-      }
-      if (!timerCheck()) {
-        return false;
-      }
-
       if (!allowPause) return false;
+
+      setState(oldState => chessReducer(oldState, {
+        type: 'pause',
+        time: new Date().getTime(),
+      }));
       return true;
     },
     OutOfTime: () => {
-      timerCheck();
+      setState(oldState => chessReducer(oldState, {
+        type: 'checkTimers',
+        time: new Date().getTime(),
+        chess: stateRef.current,
+      }));
     },
   };
 

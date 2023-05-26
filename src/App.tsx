@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { HashRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Chess } from './components/Chess';
@@ -11,6 +11,7 @@ import { SettingsProvider } from './providers/SettingsProvider';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { GlobalStyles } from './theme/global';
 import { ChessProvider } from './providers/ChessProvider';
+import { LobbyProvider } from './providers/LobbyProvider';
 
 const Container = styled.div`
   max-width: 1000px;
@@ -23,6 +24,9 @@ const Container = styled.div`
   background: ${props => props.theme.colors.background};
 `;
 
+const useHashRouter: boolean = true;
+const Router = useHashRouter ? HashRouter : BrowserRouter;
+
 function App(): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -30,27 +34,51 @@ function App(): JSX.Element {
 
   return (
     <SettingsProvider>
-      <ChessProvider>
-        <ThemeProvider>
-          <HashRouter>
-            <GlobalStyles />
+      <ThemeProvider>
+        <Router>
+          <GlobalStyles />
 
-            <Container className='App'>
-              <Header onClickSettings={onClickSettings} />
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/game/:id" element={<Chess />} />
-                <Route path="/game" element={<Chess />} />
-                <Route path="/lobby" element={<Lobby />} />
-              </Routes>
-              <Footer />
-              {
-                settingsOpen && <Settings onClickSettings={onClickSettings} />
-              }
-            </Container>
-          </HashRouter>
-        </ThemeProvider>
-      </ChessProvider>
+          <Container className='App'>
+            <Header onClickSettings={onClickSettings} />
+            <Routes>
+              <Route path="/" element={
+                <Home />
+              } />
+              <Route path="/game/bot" element={
+                <ChessProvider>
+                  <Chess type='bot' />
+                </ChessProvider>
+              } />
+              <Route path="/game/:id" element={
+                <LobbyProvider>
+                  <ChessProvider>
+                    <Chess type='online' />
+                  </ChessProvider>
+                </LobbyProvider>
+              } />
+              <Route path="/game" element={
+                <ChessProvider>
+                  <Chess type="local" />
+                </ChessProvider>
+              } />
+              <Route path="/lobby/:id" element={
+                <LobbyProvider>
+                  <Lobby />
+                </LobbyProvider>
+              } />
+              <Route path="/lobby" element={
+                <LobbyProvider>
+                  <Lobby />
+                </LobbyProvider>
+              } />
+            </Routes>
+            <Footer />
+            {
+              settingsOpen && <Settings onClickSettings={onClickSettings} />
+            }
+          </Container>
+        </Router>
+      </ThemeProvider>
     </SettingsProvider>
   );
 }

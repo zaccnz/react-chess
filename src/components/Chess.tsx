@@ -9,6 +9,7 @@ import { Fullscreen } from '../util/Fullscreen';
 import { useParams } from 'react-router-dom';
 import { useChessContext } from '../providers/ChessProvider';
 import { SettingsContext } from '@/providers/SettingsProvider';
+import { LobbyContext } from '@/providers/LobbyProvider';
 
 const ChessContainer = styled.div<{ fullscreen: boolean }>`
   ${props => props.fullscreen && `display: flex; 
@@ -55,30 +56,35 @@ const BoardContainer = styled.div`
   aspect-ratio: 1;
 `;
 
-export const Chess: React.FC = () => {
+interface ChessProps {
+  type: 'local' | 'bot' | 'online'
+}
+
+export const Chess: React.FC<ChessProps> = ({ type }) => {
   const [fullscreen, setIsFullscreen] = useState(false);
-  const [connecting, setIsConnecting] = useState(false);
-  const [connectState, setConnectState] = useState('');
   const { hasLoaded } = useContext(SettingsContext);
   const { id } = useParams();
   const { StartNewGame } = useChessContext();
   const navigate = useNavigate();
-
+  const lobby = useContext(LobbyContext);
 
   useEffect(() => {
     if (!hasLoaded) {
       return;
     }
 
-    if (id === 'bot') {
+    if (type === 'bot') {
       StartNewGame({ player_white: 'local', player_black: 'bot', positions: 'default' });
-    } else if (!id || id.length === 0) {
+    } else if (type === 'local') {
       StartNewGame({ player_white: 'local', player_black: 'local', positions: 'default' });
     } else {
-      setIsConnecting(true);
-      // connect to multiplayer session (if we can)
+      if (lobby?.type === 'ready') {
+        lobby.Connect(id ?? '', (error) => {
+          alert(error);
+        });
+      }
     }
-  }, [hasLoaded]);
+  }, [hasLoaded, lobby?.type]);
 
   const toggleFullscreen = () => {
     setIsFullscreen(b => !b);
@@ -92,6 +98,9 @@ export const Chess: React.FC = () => {
   return (
     <Fullscreen isFullscreen={fullscreen}>
       <ChessContainer fullscreen={fullscreen}>
+        {
+          lobby && lobby.type !== 'ingame' && <p>connecting...</p>
+        }
         <GameContainer fullscreen={fullscreen}>
           <BoardContainer>
             <Chessboard />
