@@ -14,7 +14,7 @@ const ControlsContainer = styled.div`
 `;
 
 const ControlsButton = styled(FontAwesomeIcon)`
-  background: #fff;
+  background: ${props => props.theme.menus.controls.button};
   padding: 9px;
   border-radius: 10px;
   box-shadow: 1px 1px 5px ${props => props.theme.menus.controls.background};

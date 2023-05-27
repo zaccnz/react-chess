@@ -7,10 +7,12 @@ const HomeContainer = styled.div`
 
 const HomeHeader = styled.h1`
   text-align: center;
+  color: ${props => props.theme.colors.text};
 `;
 
 const HomeParagraph = styled.p`
   text-align: center;
+  color: ${props => props.theme.colors.text};
 `;
 
 const HomeButtonContainer = styled.div`
@@ -64,7 +66,7 @@ export const Home: React.FC = () => {
             setId(idRef.current?.value ?? '');
           }}
         />
-        <HomeButton to={`/lobby/${id}`}>go</HomeButton>
+        <HomeButton to={`/lobby/${id}`}>join</HomeButton>
       </HomeButtonContainer>
       <HomeParagraph>
         play chess against a local player, a bot, or an online player.

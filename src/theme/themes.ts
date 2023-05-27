@@ -5,16 +5,19 @@ export const LightTheme: DefaultTheme = {
     text: '#000',
     background: '#fff',
     grid: '#eee',
-    primary: '#fee'
+    primary: '#c4b5fd'
   },
   menus: {
     controls: {
-      background: '#bbb'
+      background: '#bbb',
+      button: '#fff',
+      button_hover: '#eee',
     },
     players: {
       background: '#ddd'
     },
     moves: {
+      background: '',
       white: '',
       black: '',
       hover: ''
@@ -33,21 +36,24 @@ export const LightTheme: DefaultTheme = {
 export const DarkTheme: DefaultTheme = {
   colors: {
     text: '#fff',
-    background: '#000',
+    background: '#0f172a',
     grid: '#eee',
-    primary: '#fee'
+    primary: '#c4b5fd'
   },
   menus: {
     controls: {
-      background: '#bbb'
+      background: '#1e293b',
+      button: '#fff',
+      button_hover: '#eee',
     },
     players: {
-      background: '#ddd'
+      background: '#334155'
     },
     moves: {
-      white: '',
-      black: '',
-      hover: ''
+      background: '#475569',
+      white: '#475569',
+      black: '#52525b',
+      hover: '#94a3b8'
     }
   },
   chess: {

@@ -11,11 +11,14 @@ declare module 'styled-components' {
     menus: {
       controls: {
         background: string;
+        button: string;
+        button_hover: string;
       };
       players: {
         background: string;
       };
       moves: {
+        background: string;
         white: string;
         black: string;
         hover: string;

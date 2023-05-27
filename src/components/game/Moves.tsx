@@ -8,6 +8,7 @@ import { SettingsContext } from '@/providers/SettingsProvider';
 const MoveContainer = styled.div`
   grid-area: moves;
   overflow-y: auto;
+  background-color: ${props => props.theme.menus.moves.background};
   max-height: min(calc(100vw - 450px), calc(1000px - 430px));
   @media (max-width: 800px) {
     max-height: none;
@@ -17,6 +18,7 @@ const MoveContainer = styled.div`
 const MoveItem = styled.p`
   padding: 5px 10px;
   margin: 0px;
+  color: ${props => props.theme.colors.text};
 `;
 
 export const Moves: React.FC = () => {
@@ -54,10 +56,10 @@ export const Moves: React.FC = () => {
   return (
     <MoveContainer>
       {
-        moves.map(
+        (moves ?? []).map(
           (move, i) => {
             return (
-              <MoveItem key={`move_${i}`} style={moves.length - 1 === i ? { fontWeight: 'bold' } : {}}>
+              <MoveItem key={`move_${i}`} style={(moves ?? []).length - 1 === i ? { fontWeight: 'bold' } : {}}>
                 {moveString(move)}
               </MoveItem>
             );

@@ -33,7 +33,9 @@ type Pause_Func = () => boolean;
 type OutOfTime_Func = () => void;
 
 interface ChessInterface {
-  state: ChessState,
+  state: ChessState;
+  anticheat: string | undefined;
+  clearAnticheat: () => void;
   StartNewGame: StartNewGame_Func;
   MakeMove: MakeMove_Func;
   Promote: Promote_Func;
@@ -61,6 +63,7 @@ interface ChessProviderProps {
 export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
   const { allowPause, defaultUsername, gameLength } = useContext(SettingsContext);
   const [state, setState] = useState(createChessState(gameLength, { w: { name: 'loading', type: 'local' }, b: { name: 'loading', type: 'local' } }));
+  const [anticheat, setAnticheat] = useState<string | undefined>();
   const stateRef = useRef(new Chess());
   const workerRef = useRef(new BotWorker());
   const configRef = useRef<ChessConfig | undefined>(undefined);
@@ -111,7 +114,7 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       setState(state => {
         const next = syncGame(state, lobbyData, lobby.uid, stateRef.current, new Date().getTime());
         if (typeof next === 'string') {
-          alert('Anti-cheat triggered: ' + next);
+          setAnticheat(next);
           console.error('found cheater!')
           console.error(next);
         } else {
@@ -124,6 +127,10 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
 
   const contextValue: ChessInterface = {
     state,
+    anticheat,
+    clearAnticheat: () => {
+      setAnticheat(undefined);
+    },
     StartNewGame: (config: ChessConfig): void => {
       configRef.current = config;
       stateRef.current = new Chess();
@@ -163,6 +170,9 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       return stateRef.current.moves({ square: XYtoSquare(from_x, from_y), verbose: true });
     },
     UndoMove: (): boolean => {
+      if (state.players.w.type === 'online' || state.players.b.type === 'online') {
+        return false;
+      }
       setState(oldState => chessReducer(oldState, {
         type: 'undo',
         time: new Date().getTime(),
@@ -171,6 +181,9 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       return true;
     },
     RedoMove: (): boolean => {
+      if (state.players.w.type === 'online' || state.players.b.type === 'online') {
+        return false;
+      }
       setState(oldState => chessReducer(oldState, {
         type: 'redo',
         time: new Date().getTime(),
@@ -179,6 +192,9 @@ export const ChessProvider: React.FC<ChessProviderProps> = (props) => {
       return true;
     },
     Pause: (): boolean => {
+      if (state.players.w.type === 'online' || state.players.b.type === 'online') {
+        return false;
+      }
       if (!allowPause) return false;
 
       setState(oldState => chessReducer(oldState, {

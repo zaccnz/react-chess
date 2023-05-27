@@ -6,6 +6,7 @@ import { ChessPiece } from './ChessPiece';
 import { Color, PieceSymbol, Square } from 'chess.js';
 import { pieceToFilename, pieceToName, pieceToString } from '@/game/piece';
 import { LobbyContext } from '@/providers/LobbyProvider';
+import { CompleteFlag } from '@/game/state';
 
 interface MoveProps {
   grid_x: number,
@@ -84,7 +85,7 @@ const BoardGridColLabel = styled.span`
   z-index: 10;
 `;
 
-const PromotionWindow = styled.div`
+const Window = styled.div`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -94,7 +95,7 @@ const PromotionWindow = styled.div`
   z-index: 20;
 `;
 
-const PromotionTitle = styled.h1`
+const WindowTitle = styled.h1`
   text-align: center;
   color: #fff;
   padding-top: 1em;
@@ -126,6 +127,11 @@ const PromotionChoice = styled.img`
     background: #eee;
   }
 `;
+const GameOverText = styled.h2`
+  text-align: center;
+  color: #fff;
+  padding-bottom: 1em;
+`;
 
 const PROMOTIONS: PieceSymbol[] = ['q', 'r', 'n', 'b'];
 
@@ -135,7 +141,7 @@ interface GridPosition {
 }
 
 export const Chessboard: React.FC = () => {
-  const { state: { board, turn }, PotentialMoves, MakeMove, Promote } = useChessContext();
+  const { state: { board, turn, players, complete }, anticheat, clearAnticheat, PotentialMoves, MakeMove, Promote } = useChessContext();
   const [selected, setSelected] = useState<GridPosition | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [moveError, setMoveError] = useState('');
@@ -157,6 +163,14 @@ export const Chessboard: React.FC = () => {
       document.removeEventListener('touchmove', onTouchMove);
     };
   }, []);
+
+  useEffect(() => {
+    if (anticheat) {
+      setMoveError(anticheat);
+    } else {
+      setMoveError('');
+    }
+  }, [anticheat])
 
   const pixelsToGrid = (x: number, y: number): [number, number] => {
     const parent = boardRef.current;
@@ -204,6 +218,26 @@ export const Chessboard: React.FC = () => {
     setPromotion(undefined);
   }
 
+  const gameOverReason = (): string => {
+    if (complete === undefined) {
+      return 'invalid reason';
+    }
+    let player = turn === 'w' ? players.w.name : players.b.name;
+    if (complete.indexOf(CompleteFlag.CHECKMATE) >= 0) {
+      return player + ' is in checkmate';
+    } else if (complete.indexOf(CompleteFlag.OUT_OF_TIME) >= 0) {
+      return player + ' ran out of time';
+    } else if (complete.indexOf(CompleteFlag.INSUFFICIENT_MATERIAL) >= 0) {
+      return player + ' has insufficient material';
+    } else if (complete.indexOf(CompleteFlag.THREEFOLD_REPITITION) >= 0) {
+      return player + ' performed threefold repitition';
+    } else if (complete.indexOf(CompleteFlag.DRAW) >= 0) {
+      return 'draw';
+    }
+
+    return 'invalid reason';
+  }
+
   return (
     <BoardDiv ref={boardRef}>
       {
@@ -239,7 +273,7 @@ export const Chessboard: React.FC = () => {
                 pixels_to_grid={pixelsToGrid}
                 grid_to_pixels={gridToPixels}
                 on_select_change={(selected) => selected ? setSelected({ grid_x: v.x, grid_y: v.y }) : setSelected(null)}
-                can_click={(v.team === turn && (!lobby || (lobby.type === 'ingame' && lobby.lobby.players[turn]?.uid === lobby.uid))) ?? false}
+                can_click={v.team === turn && players[turn].type === 'local'}
               />
           )
       }
@@ -255,10 +289,10 @@ export const Chessboard: React.FC = () => {
           />
         )
       }
-      <Error error={moveError} duration={1000} onErrorClose={() => setMoveError('')} />
+      <Error error={moveError} duration={1000} onErrorClose={() => { setMoveError(''); clearAnticheat() }} />
       {
-        promotion && <PromotionWindow>
-          <PromotionTitle>promotion</PromotionTitle>
+        promotion && <Window>
+          <WindowTitle>promotion</WindowTitle>
           <PromotionChoices>
             {
               PROMOTIONS.map(piece =>
@@ -272,7 +306,13 @@ export const Chessboard: React.FC = () => {
               )
             }
           </PromotionChoices>
-        </PromotionWindow>
+        </Window>
+      }
+      {
+        complete && <Window>
+          <WindowTitle>Game Over: </WindowTitle>
+          <GameOverText>{gameOverReason()}</GameOverText>
+        </Window>
       }
     </BoardDiv>
   );

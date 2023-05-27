@@ -16,7 +16,7 @@ const PlayersContainer = styled.div`
 
 const PlayerContainer = styled.div`
   display: grid;
-  border-bottom: 1px solid ${props => props.theme.colors.grid};
+  border-top: 2px solid ${props => props.theme.menus.controls.background};
   grid-template-columns: 50px auto 50px;
   grid-template-rows: 20px 20px 20px;
   grid-template-areas:
@@ -70,6 +70,7 @@ const PlayerTurn = styled.p`
   display: flex;
   align-item: center;
   justify-content: center;
+  color: ${props => props.theme.colors.text};
 `;
 
 interface PlayerDataUI {
@@ -79,6 +80,7 @@ interface PlayerDataUI {
   details: string;
   turn: boolean;
   lost_pieces: PieceSymbol[];
+  playable: boolean;
   timer: {
     minutes: number,
     seconds: number,
@@ -92,6 +94,7 @@ const EmptyPlayerDataUI: PlayerDataUI = {
   details: '',
   turn: false,
   lost_pieces: [],
+  playable: false,
   timer: {
     minutes: 0,
     seconds: 0,
@@ -118,22 +121,8 @@ export const Players: React.FC = () => {
           p.status = '';
         }
 
-        if (colour === turn && complete) {
-          if (complete.indexOf(CompleteFlag.OUT_OF_TIME) >= 0) {
-            p.status = 'OUT OF TIME'
-          } else if (complete.indexOf(CompleteFlag.CHECKMATE) >= 0) {
-            p.status = 'CHECKMATE';
-          } else if (complete.indexOf(CompleteFlag.INSUFFICIENT_MATERIAL) >= 0) {
-            p.status = 'insufficient material';
-          } else if (complete.indexOf(CompleteFlag.THREEFOLD_REPITITION) >= 0) {
-            p.status = 'threefold repitition';
-          }
-        }
-
-        if (complete && complete.indexOf(CompleteFlag.DRAW) >= 0) {
-          p.status = 'draw';
-        }
         p.name = lobbyPlayers[colour].name;
+        p.playable = lobbyPlayers[colour].type === 'local';
         p.turn = turn === colour;
         p.lost_pieces = [...captured[colour]];
       });
@@ -191,7 +180,8 @@ export const Players: React.FC = () => {
           <PlayerContainer key={i}>
             <PlayerIcon>{v.icon}</PlayerIcon>
             <PlayersName>
-              {v.name} {v.status !== '' && <PlayerStatus>{v.status}</PlayerStatus>}
+              {v.playable ? (<strong>{v.name}</strong>) : v.name}{' '}
+              {v.status !== '' && <PlayerStatus>{v.status}</PlayerStatus>}
             </PlayersName>
             <PlayerDetails>
               {v.timer.minutes}:{v.timer.seconds.toString().padStart(2, '0')}
